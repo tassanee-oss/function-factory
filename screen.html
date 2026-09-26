@@ -27,6 +27,17 @@
   .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
   .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
   .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .ft-small { display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-small.ok { background:#e8eef7; color:var(--brand); } .ft-small.soon { background:#ffedd5; color:#c2410c; } .ft-small.over { background:#fee2e2; color:var(--bad); animation:ftblink 1s infinite; }
+  .ft-big { display:block; }
+  .ft-big .ft-main { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-big .ft-of { font-size:18px; font-weight:400; opacity:.75; }
+  .ft-big .ft-bar { height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:6px 0; }
+  .ft-big .ft-bar div { height:100%; background:var(--ok); transition:width 1s linear; }
+  .ft-big.soon .ft-main { color:#c2410c; } .ft-big.soon .ft-bar div { background:#f59e0b; }
+  .ft-big.over .ft-main { color:var(--bad); animation:ftblink 1s infinite; } .ft-big.over .ft-bar div { background:var(--bad); }
+  .ft-big .ft-tot { font-size:15px; color:var(--mute); }
+  @keyframes ftblink { 50% { opacity:.45; } }
   .pz { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:grab; }
   .pz-src { opacity:.35; }
   .pz-ghost { position:fixed; z-index:90; pointer-events:none; opacity:.95; box-shadow:0 8px 24px rgba(15,31,61,.25); border-color:var(--brand); margin:0; cursor:grabbing; }
@@ -50,6 +61,35 @@
   // เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์แบบ Promise
   function api(fn) { var args = Array.prototype.slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { no(e); })[fn].apply(null, args); }); }
   function fail(e) { toast('⚠️ ' + (e && e.message ? e.message : e), 4000); }
+  // ---------- ตัวจับเวลาแต่ละขั้น (เวลาอ้างอิงจากเซิร์ฟเวอร์ ไม่ขึ้นกับนาฬิกาของเครื่อง) ----------
+  var FF_T = null, FF_OFF = 0;
+  function ffTimerSet(pub) { if (!pub || !pub.timer) return; FF_T = pub; FF_OFF = pub.timer.now - Date.now(); ffTimerTick(); }
+  function ffMs(ms) { var s = Math.round(Math.abs(ms) / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function ffTimerCalc() {
+    if (!FF_T) return null;
+    var T = FF_T.timer, now = Date.now() + FF_OFF, planMin = Number(T.min[FF_T.phase]);
+    var total = (T.log || []).reduce(function (a, x) { return a + ((x.e || now) - x.s); }, 0), planTotal = 0;
+    for (var k in T.min) planTotal += Number(T.min[k]) || 0;
+    var r = { total: total, budget: (T.budget || 55) * 60000, planTotal: planTotal, has: !!(planMin && T.start) };
+    if (r.has) { r.plan = planMin * 60000; r.used = now - T.start; r.left = r.plan - r.used; }
+    return r;
+  }
+  function ffTimerTick() {
+    var t = ffTimerCalc(), els = $$('.fftimer'); if (!els.length) return;
+    els.forEach(function (el) {
+      var mode = el.dataset.mode;
+      if (!t) { el.innerHTML = ''; return; }
+      var cls = !t.has ? '' : t.left < 0 ? 'over' : t.left < 60000 ? 'soon' : 'ok';
+      var tot = 'รวมทั้งคาบ ' + ffMs(t.total) + ' / ' + (t.budget / 60000) + ' นาที';
+      if (mode === 'small') { el.className = 'fftimer ft-small ' + cls; el.innerHTML = t.has ? '⏱ ' + (t.left < 0 ? '+' + ffMs(t.left) + ' เกินเวลา' : ffMs(t.left)) : ''; return; }
+      if (mode === 'total') { el.innerHTML = tot; return; }
+      el.className = 'fftimer ft-big ' + cls;
+      el.innerHTML = t.has ? '<div class="ft-main">⏱ ' + (t.left < 0 ? 'เกินเวลา +' + ffMs(t.left) : 'เหลือ ' + ffMs(t.left)) + ' <span class="ft-of">จาก ' + (t.plan / 60000) + ' นาที</span></div>' +
+        '<div class="ft-bar"><div style="width:' + Math.min(100, Math.max(0, t.used / t.plan * 100)) + '%"></div></div><div class="ft-tot">' + tot + (t.total > t.budget ? ' · ⚠️ เกินกรอบ' : '') + '</div>'
+        : '<div class="ft-tot">' + tot + '</div>';
+    });
+  }
+  setInterval(ffTimerTick, 1000);
   var ROLE_IDX = { data: 1, random: 2, check: 3, end: 4 };
   var FLOW = ['📦 Global + On start: Load Array → Call "Random"', '🏁 Random: Array ยังไม่ว่าง? → 🎲 สุ่ม Num → แสดงโจทย์ → เก็บ Answer → Delete', '✔️ กดปุ่มตอบ: ถูก → +1 Score · ทั้งถูกและผิด → Call "Random" ↺', '🏁 Array ว่างแล้ว → Go to layout สรุปคะแนน (แสดง Score)'];
 </script>
@@ -71,6 +111,8 @@
   .g8 .card { text-align:center; }
   .sos { outline:6px solid #dc2626; animation:blink 1s infinite; }
   @keyframes blink { 50% { outline-color:transparent; } }
+  .ft-big .ft-main { font-size:40px; } .ft-big .ft-of { font-size:22px; }
+  .ft-big.soon .ft-main { color:#fdba74; } .ft-big.over .ft-main { color:#fca5a5; } .ft-big .ft-tot { color:#cbd5e1; font-size:18px; }
   #fs { position:fixed; right:12px; bottom:12px; background:#334155; }
 </style></head>
 <body>
@@ -79,10 +121,10 @@
 <script>
 var S = null, P = null, APP = FF_BASE;
 api('getStatic').then(function (s) { S = s; loop(); }).catch(fail);
-function loop() { api('getScreenState').then(function (p) { P = p; draw(); }).catch(function () { }).then(function () { (clearTimeout(window.LT), window.LT = setTimeout(loop, 10000)); }); }
+function loop() { api('getScreenState').then(function (p) { P = p; ffTimerSet(p); draw(); }).catch(function () { }).then(function () { (clearTimeout(window.LT), window.LT = setTimeout(loop, 10000)); }); }
 var lastPhase = '';
 function phaseLabel() { return (S.phases.filter(function (x) { return x.id === P.phase; })[0] || {}).label || ''; }
-function head() { return '<div class="row" style="justify-content:space-between"><h1 class="title">🏭 ' + esc(phaseLabel()) + '</h1><span style="opacity:.8">ลงชื่อแล้ว ' + P.signed + '/' + P.total + ' คน</span></div>'; }
+function head() { return '<div class="row" style="justify-content:space-between"><h1 class="title">🏭 ' + esc(phaseLabel()) + '</h1><div style="text-align:right"><div class="fftimer" data-mode="big" style="min-width:420px"></div><span style="opacity:.8;font-size:18px">ลงชื่อแล้ว ' + P.signed + '/' + P.total + ' คน</span></div></div>'; }
 function nums(done) { var set = {}; done.forEach(function (n) { set[n] = 1; }); return '<div class="nums">' + S.roster.map(function (r) { return '<b class="' + (set[r.no] ? 'on' : '') + '">' + r.no + '</b>'; }).join('') + '</div>'; }
 function flowCard() { return '<div class="card flow" style="font-size:26px">' + FLOW.map(function (f) { return '<div>' + esc(f) + '</div>'; }).join('') + '</div>'; }
 function goldenCard() {
@@ -126,6 +168,7 @@ function draw() {
     h += inquiryCard();
   }
   $('#app').innerHTML = h;
+  ffTimerTick();
   if (p === 'wait' && window.QRCode && APP) new QRCode($('#qr'), { text: APP, width: 320, height: 320 });
 }
 

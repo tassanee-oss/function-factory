@@ -27,6 +27,17 @@
   .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
   .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
   .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .ft-small { display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-small.ok { background:#e8eef7; color:var(--brand); } .ft-small.soon { background:#ffedd5; color:#c2410c; } .ft-small.over { background:#fee2e2; color:var(--bad); animation:ftblink 1s infinite; }
+  .ft-big { display:block; }
+  .ft-big .ft-main { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-big .ft-of { font-size:18px; font-weight:400; opacity:.75; }
+  .ft-big .ft-bar { height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:6px 0; }
+  .ft-big .ft-bar div { height:100%; background:var(--ok); transition:width 1s linear; }
+  .ft-big.soon .ft-main { color:#c2410c; } .ft-big.soon .ft-bar div { background:#f59e0b; }
+  .ft-big.over .ft-main { color:var(--bad); animation:ftblink 1s infinite; } .ft-big.over .ft-bar div { background:var(--bad); }
+  .ft-big .ft-tot { font-size:15px; color:var(--mute); }
+  @keyframes ftblink { 50% { opacity:.45; } }
   .pz { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:grab; }
   .pz-src { opacity:.35; }
   .pz-ghost { position:fixed; z-index:90; pointer-events:none; opacity:.95; box-shadow:0 8px 24px rgba(15,31,61,.25); border-color:var(--brand); margin:0; cursor:grabbing; }
@@ -50,6 +61,35 @@
   // เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์แบบ Promise
   function api(fn) { var args = Array.prototype.slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { no(e); })[fn].apply(null, args); }); }
   function fail(e) { toast('⚠️ ' + (e && e.message ? e.message : e), 4000); }
+  // ---------- ตัวจับเวลาแต่ละขั้น (เวลาอ้างอิงจากเซิร์ฟเวอร์ ไม่ขึ้นกับนาฬิกาของเครื่อง) ----------
+  var FF_T = null, FF_OFF = 0;
+  function ffTimerSet(pub) { if (!pub || !pub.timer) return; FF_T = pub; FF_OFF = pub.timer.now - Date.now(); ffTimerTick(); }
+  function ffMs(ms) { var s = Math.round(Math.abs(ms) / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function ffTimerCalc() {
+    if (!FF_T) return null;
+    var T = FF_T.timer, now = Date.now() + FF_OFF, planMin = Number(T.min[FF_T.phase]);
+    var total = (T.log || []).reduce(function (a, x) { return a + ((x.e || now) - x.s); }, 0), planTotal = 0;
+    for (var k in T.min) planTotal += Number(T.min[k]) || 0;
+    var r = { total: total, budget: (T.budget || 55) * 60000, planTotal: planTotal, has: !!(planMin && T.start) };
+    if (r.has) { r.plan = planMin * 60000; r.used = now - T.start; r.left = r.plan - r.used; }
+    return r;
+  }
+  function ffTimerTick() {
+    var t = ffTimerCalc(), els = $$('.fftimer'); if (!els.length) return;
+    els.forEach(function (el) {
+      var mode = el.dataset.mode;
+      if (!t) { el.innerHTML = ''; return; }
+      var cls = !t.has ? '' : t.left < 0 ? 'over' : t.left < 60000 ? 'soon' : 'ok';
+      var tot = 'รวมทั้งคาบ ' + ffMs(t.total) + ' / ' + (t.budget / 60000) + ' นาที';
+      if (mode === 'small') { el.className = 'fftimer ft-small ' + cls; el.innerHTML = t.has ? '⏱ ' + (t.left < 0 ? '+' + ffMs(t.left) + ' เกินเวลา' : ffMs(t.left)) : ''; return; }
+      if (mode === 'total') { el.innerHTML = tot; return; }
+      el.className = 'fftimer ft-big ' + cls;
+      el.innerHTML = t.has ? '<div class="ft-main">⏱ ' + (t.left < 0 ? 'เกินเวลา +' + ffMs(t.left) : 'เหลือ ' + ffMs(t.left)) + ' <span class="ft-of">จาก ' + (t.plan / 60000) + ' นาที</span></div>' +
+        '<div class="ft-bar"><div style="width:' + Math.min(100, Math.max(0, t.used / t.plan * 100)) + '%"></div></div><div class="ft-tot">' + tot + (t.total > t.budget ? ' · ⚠️ เกินกรอบ' : '') + '</div>'
+        : '<div class="ft-tot">' + tot + '</div>';
+    });
+  }
+  setInterval(ffTimerTick, 1000);
   var ROLE_IDX = { data: 1, random: 2, check: 3, end: 4 };
   var FLOW = ['📦 Global + On start: Load Array → Call "Random"', '🏁 Random: Array ยังไม่ว่าง? → 🎲 สุ่ม Num → แสดงโจทย์ → เก็บ Answer → Delete', '✔️ กดปุ่มตอบ: ถูก → +1 Score · ทั้งถูกและผิด → Call "Random" ↺', '🏁 Array ว่างแล้ว → Go to layout สรุปคะแนน (แสดง Score)'];
 </script>
@@ -77,17 +117,34 @@ function login() {
 }
 var timer;
 function start() { poll(); }
-function poll() { clearTimeout(timer); api('getTeacherState', PIN).then(function (t) { T = t; var a = document.activeElement; if (!busy && !(a && /INPUT|SELECT|TEXTAREA/.test(a.tagName))) draw(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
+function poll() { clearTimeout(timer); api('getTeacherState', PIN).then(function (t) { T = t; ffTimerSet(t.pub); var a = document.activeElement; if (!busy && !(a && /INPUT|SELECT|TEXTAREA/.test(a.tagName))) draw(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
 function act(action, data, msg) { busy = true; return api('teacherAction', PIN, action, data || {}).then(function (r) { if (msg) toast(msg); busy = false; poll(); return r; }).catch(function (e) { busy = false; fail(e); }); }
 var ROLE = {};
 function roleName(id) { var r = S.roles.filter(function (x) { return x.id === id; })[0]; return r ? r.ic + ' ' + r.name : ''; }
 function sel(val, opts, attrs) { return '<select ' + attrs + '><option value=""></option>' + opts.map(function (o) { return '<option' + (String(val) === String(o) ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; }
 function sum(a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; }
 
+// ตัวจับเวลา: นับถอยหลังขั้นปัจจุบัน · +1 นาที · ตั้งเวลาแต่ละขั้น · เวลาที่ใช้จริงเทียบแผน
+function timerPanel(P) {
+  var Tm = P.timer; if (!Tm) return '';
+  var used = {}, now = Date.now() + FF_OFF, planTotal = 0;
+  (Tm.log || []).forEach(function (x) { used[x.p] = (used[x.p] || 0) + ((x.e || now) - x.s); });
+  var rows = S.phases.filter(function (p) { return Tm.min[p.id] !== undefined; }).map(function (p) {
+    var plan = Number(Tm.min[p.id]) || 0, u = used[p.id]; planTotal += plan;
+    var diff = u ? Math.round((u / 60000 - plan) * 10) / 10 : '';
+    return '<tr' + (p.id === P.phase ? ' style="background:#e8f1ff"' : '') + '><td class="l">' + esc(p.label) + '</td><td><input type="number" min="0" max="60" step="1" data-pm="' + p.id + '" value="' + plan + '"></td><td>' + (u ? ffMs(u) : '') + '</td><td style="color:' + (diff > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + (diff === '' ? '' : (diff > 0 ? '+' : '') + diff) + '</td></tr>';
+  }).join('');
+  return '<div class="row" style="margin-top:10px;align-items:flex-start"><div class="fftimer" data-mode="big" style="flex:1;min-width:280px"></div>' +
+    (Tm.min[P.phase] ? '<button class="ghost" id="plus1">+1 นาที ให้ขั้นนี้</button>' : '') + '</div>' +
+    '<details style="margin-top:8px"><summary>⏱ ตั้งเวลาแต่ละขั้น · เวลาที่ใช้จริง (แผนรวม ' + planTotal + ' นาที จากกรอบ ' + Tm.budget + ' นาที' + (planTotal > Tm.budget ? ' ⚠️ เกินกรอบ' : '') + ')</summary>' +
+    '<table class="t" style="margin-top:8px;max-width:640px"><tr><th>ขั้น</th><th>แผน (นาที)</th><th>ใช้จริง</th><th>ต่าง (นาที)</th></tr>' + rows + '</table>' +
+    '<div class="row" style="margin-top:8px"><button id="pmsave">บันทึกเวลาแผน</button><button class="warn" id="treset">เริ่มจับเวลาใหม่ทั้งคาบ</button><span class="mute">การจับเวลาเริ่มเองเมื่อกดเปลี่ยนขั้น</span></div></details>';
+}
 function draw() {
   var P = T.pub, url = FF_BASE;
   $('#sub').textContent = 'ขั้นปัจจุบัน: ' + ((S.phases.filter(function (x) { return x.id === P.phase; })[0] || {}).label || '');
-  var h = '<div class="card"><h2>▶️ ขั้นตอนการสอน</h2><div class="phases">' + S.phases.map(function (p) { return '<button class="' + (p.id === P.phase ? 'cur' : '') + '" data-ph="' + p.id + '">' + esc(p.label) + '</button>'; }).join('') + '</div>' +
+  var h = '<div class="card"><h2>▶️ ขั้นตอนการสอน</h2><div class="phases">' + S.phases.map(function (p) { var mn = P.timer && P.timer.min[p.id]; return '<button class="' + (p.id === P.phase ? 'cur' : '') + '" data-ph="' + p.id + '">' + esc(p.label) + (mn ? ' · ' + mn + '′' : '') + '</button>'; }).join('') + '</div>' +
+    timerPanel(P) +
     '<div class="row mute" style="margin-top:8px">ลิงก์จอใหญ่: <a href="' + url + 'screen.html" target="_blank">' + url + 'screen.html</a> · ลิงก์นักเรียน: <a href="' + url + '" target="_blank">' + url + '</a></div></div>';
 
   // แผงตามขั้น
@@ -159,10 +216,14 @@ function draw() {
   $('#app').innerHTML = h;
   $$('.card > details').forEach(function (d) { var k = keyOf(d); if (OPEN[k] !== undefined) d.open = OPEN[k]; });
   bind();
+  ffTimerTick();
 }
 var RESETS = [['แบบทดสอบ + เป้าหมาย + การ์ดทบทวน', ['Tests', 'Goals', 'Support']], ['Word Cloud', ['Cloud', 'CloudTag']], ['Parsons + บัตรส่งต่องาน + กฎทอง', ['Parsons', 'Handoff', 'Rules']], ['ประกอบเกม + บั๊ก + ภารกิจต่อยอด', ['Build', 'Bugs', 'Extend']], ['ประเมินเพื่อน + สะท้อนตนเอง + ภารกิจค้นคว้า', ['Peer', 'Reflect', 'Inquiry']], ['Rubric ทั้งหมด', ['Rubric', 'GroupRubric']], ['กลุ่ม/บทบาทนักเรียน', ['Students']],
   ['ทั้งหมด + กลับไปขั้นเริ่มต้น', ['Tests', 'Goals', 'Support', 'Cloud', 'CloudTag', 'Parsons', 'Handoff', 'Rules', 'Build', 'Bugs', 'Extend', 'Peer', 'Reflect', 'Inquiry', 'Rubric', 'GroupRubric', 'Students', 'Config']]];
 function bind() {
+  if ($('#plus1')) $('#plus1').onclick = function () { var m = {}; for (var k in T.pub.timer.min) m[k] = Number(T.pub.timer.min[k]); m[T.pub.phase] = (m[T.pub.phase] || 0) + 1; act('phaseMin', { min: m }, 'เพิ่มเวลา 1 นาทีแล้ว'); };
+  if ($('#pmsave')) $('#pmsave').onclick = function () { var m = {}; $$('[data-pm]').forEach(function (i) { m[i.dataset.pm] = Math.max(0, Number(i.value) || 0); }); act('phaseMin', { min: m }, 'บันทึกเวลาแผนแล้ว'); };
+  if ($('#treset')) $('#treset').onclick = function () { if (confirm('ล้างเวลาที่บันทึกไว้ แล้วเริ่มจับเวลาใหม่ตั้งแต่ขั้นปัจจุบัน?')) act('timerReset', {}, 'เริ่มจับเวลาใหม่แล้ว'); };
   $$('[data-ph]').forEach(function (b) { b.onclick = function () { act('phase', { phase: b.dataset.ph }, 'เปลี่ยนขั้นแล้ว'); }; });
   $$('[data-tag]').forEach(function (b) { b.onclick = function () { var c = (Number(b.dataset.cat) + 1) % S.cats.length; b.style.background = S.cats[c].color; b.dataset.cat = c; act('tag', { norm: b.dataset.tag, cat: c }); }; });
   $$('[data-hide]').forEach(function (b) { b.onclick = function () { if (confirm('ซ่อนคำ “' + b.dataset.hide + '” จากจอใหญ่?')) act('hideWord', { norm: b.dataset.hide }); }; });

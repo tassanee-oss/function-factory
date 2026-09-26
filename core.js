@@ -111,6 +111,18 @@ function metrics81_(people, groups, pub) {
     { k: 'คุณลักษณะ (A) – Rubric 3 (≥ 10/12)', n: aOk + ' / ' + a.length + ' คน', p: pct(aOk, a.length) }
   ];
 }
+function timeRows_(pub) {
+  var T = pub.timer || { min: {}, log: [], now: Date.now(), budget: 55 }, used = {};
+  (T.log || []).forEach(function (x) { used[x.p] = (used[x.p] || 0) + ((x.e || T.now) - x.s); });
+  var r1 = function (v) { return Math.round(v * 10) / 10; }, sp = 0, su = 0;
+  var rows = PHASES.filter(function (p) { return T.min[p.id] !== undefined; }).map(function (p) {
+    var plan = Number(T.min[p.id]) || 0, u = used[p.id] ? used[p.id] / 60000 : 0; sp += plan; su += u;
+    return [p.label, plan, used[p.id] ? r1(u) : '', used[p.id] ? r1(u - plan) : ''];
+  });
+  rows.push(['รวม (กรอบ ' + T.budget + ' นาที)', sp, r1(su), r1(su - sp)]);
+  return rows;
+}
+var PHASES = [{"id":"wait","label":"รอเริ่มกิจกรรม","step":0},{"id":"pretest","label":"1.1 แบบทดสอบก่อนเรียน","step":1},{"id":"cloud","label":"1.2 Word Cloud เบื้องหลังเกม","step":1},{"id":"parsons","label":"2.3 เรียงบล็อกคำสั่ง (Parsons)","step":2},{"id":"handoff","label":"2.4 บัตรส่งต่องาน","step":2},{"id":"rules","label":"2.5 สรุปกฎทอง","step":2},{"id":"build","label":"3 ประกอบเกม · ทดสอบ · บันทึกบั๊ก","step":3},{"id":"peer","label":"4 เจ้าบ้าน–แขก · ประเมินเพื่อน","step":4},{"id":"posttest","label":"5.1 แบบทดสอบหลังเรียน","step":5},{"id":"reflect","label":"5.2 สะท้อนตนเอง","step":5},{"id":"after","label":"หลังคาบ · ภารกิจค้นคว้าต่อยอด","step":5}];
 function buildEvidence() {
   var st = getTeacherState(config_().teacherPin);
   var name = 'หลักฐานรายบุคคล', s = ss_().getSheetByName(name); if (s) ss_().deleteSheet(s); s = ss_().insertSheet(name);
@@ -139,6 +151,11 @@ function buildEvidence() {
   kk.getRange(1, 1, 1, 3).setValues([['ด้าน', 'จำนวนผู้ผ่านเกณฑ์', 'ร้อยละ']]).setFontWeight('bold').setBackground('#d9e8f5');
   kk.getRange(2, 1, st.metrics81.length, 3).setValues(st.metrics81.map(function (x) { return [x.k, x.n, x.p]; }));
   kk.setFrozenRows(1);
+  var tname = 'เวลาแต่ละขั้น', tt = ss_().getSheetByName(tname); if (tt) ss_().deleteSheet(tt); tt = ss_().insertSheet(tname);
+  var tr = timeRows_(st.pub);
+  tt.getRange(1, 1, 1, 4).setValues([['ขั้น', 'แผน (นาที)', 'ใช้จริง (นาที)', 'ต่าง (นาที)']]).setFontWeight('bold').setBackground('#d9e8f5');
+  tt.getRange(2, 1, tr.length, 4).setValues(tr);
+  tt.setFrozenRows(1);
   var mname = 'สรุปตาราง 8.2', m = ss_().getSheetByName(mname); if (m) ss_().deleteSheet(m); m = ss_().insertSheet(mname);
   m.getRange(1, 1, 1, 2).setValues([['ตัวชี้วัด', 'ผลที่เกิดกับผู้เรียน (นำไปกรอกตาราง 8.2 ในแผน)']]).setFontWeight('bold').setBackground('#d9e8f5');
   m.getRange(2, 1, st.metrics.length, 2).setValues(st.metrics.map(function (x) { return [x.k, x.v]; }));

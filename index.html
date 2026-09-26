@@ -27,6 +27,17 @@
   .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
   .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
   .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .ft-small { display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-small.ok { background:#e8eef7; color:var(--brand); } .ft-small.soon { background:#ffedd5; color:#c2410c; } .ft-small.over { background:#fee2e2; color:var(--bad); animation:ftblink 1s infinite; }
+  .ft-big { display:block; }
+  .ft-big .ft-main { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ft-big .ft-of { font-size:18px; font-weight:400; opacity:.75; }
+  .ft-big .ft-bar { height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:6px 0; }
+  .ft-big .ft-bar div { height:100%; background:var(--ok); transition:width 1s linear; }
+  .ft-big.soon .ft-main { color:#c2410c; } .ft-big.soon .ft-bar div { background:#f59e0b; }
+  .ft-big.over .ft-main { color:var(--bad); animation:ftblink 1s infinite; } .ft-big.over .ft-bar div { background:var(--bad); }
+  .ft-big .ft-tot { font-size:15px; color:var(--mute); }
+  @keyframes ftblink { 50% { opacity:.45; } }
   .pz { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:grab; }
   .pz-src { opacity:.35; }
   .pz-ghost { position:fixed; z-index:90; pointer-events:none; opacity:.95; box-shadow:0 8px 24px rgba(15,31,61,.25); border-color:var(--brand); margin:0; cursor:grabbing; }
@@ -50,6 +61,35 @@
   // เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์แบบ Promise
   function api(fn) { var args = Array.prototype.slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { no(e); })[fn].apply(null, args); }); }
   function fail(e) { toast('⚠️ ' + (e && e.message ? e.message : e), 4000); }
+  // ---------- ตัวจับเวลาแต่ละขั้น (เวลาอ้างอิงจากเซิร์ฟเวอร์ ไม่ขึ้นกับนาฬิกาของเครื่อง) ----------
+  var FF_T = null, FF_OFF = 0;
+  function ffTimerSet(pub) { if (!pub || !pub.timer) return; FF_T = pub; FF_OFF = pub.timer.now - Date.now(); ffTimerTick(); }
+  function ffMs(ms) { var s = Math.round(Math.abs(ms) / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function ffTimerCalc() {
+    if (!FF_T) return null;
+    var T = FF_T.timer, now = Date.now() + FF_OFF, planMin = Number(T.min[FF_T.phase]);
+    var total = (T.log || []).reduce(function (a, x) { return a + ((x.e || now) - x.s); }, 0), planTotal = 0;
+    for (var k in T.min) planTotal += Number(T.min[k]) || 0;
+    var r = { total: total, budget: (T.budget || 55) * 60000, planTotal: planTotal, has: !!(planMin && T.start) };
+    if (r.has) { r.plan = planMin * 60000; r.used = now - T.start; r.left = r.plan - r.used; }
+    return r;
+  }
+  function ffTimerTick() {
+    var t = ffTimerCalc(), els = $$('.fftimer'); if (!els.length) return;
+    els.forEach(function (el) {
+      var mode = el.dataset.mode;
+      if (!t) { el.innerHTML = ''; return; }
+      var cls = !t.has ? '' : t.left < 0 ? 'over' : t.left < 60000 ? 'soon' : 'ok';
+      var tot = 'รวมทั้งคาบ ' + ffMs(t.total) + ' / ' + (t.budget / 60000) + ' นาที';
+      if (mode === 'small') { el.className = 'fftimer ft-small ' + cls; el.innerHTML = t.has ? '⏱ ' + (t.left < 0 ? '+' + ffMs(t.left) + ' เกินเวลา' : ffMs(t.left)) : ''; return; }
+      if (mode === 'total') { el.innerHTML = tot; return; }
+      el.className = 'fftimer ft-big ' + cls;
+      el.innerHTML = t.has ? '<div class="ft-main">⏱ ' + (t.left < 0 ? 'เกินเวลา +' + ffMs(t.left) : 'เหลือ ' + ffMs(t.left)) + ' <span class="ft-of">จาก ' + (t.plan / 60000) + ' นาที</span></div>' +
+        '<div class="ft-bar"><div style="width:' + Math.min(100, Math.max(0, t.used / t.plan * 100)) + '%"></div></div><div class="ft-tot">' + tot + (t.total > t.budget ? ' · ⚠️ เกินกรอบ' : '') + '</div>'
+        : '<div class="ft-tot">' + tot + '</div>';
+    });
+  }
+  setInterval(ffTimerTick, 1000);
   var ROLE_IDX = { data: 1, random: 2, check: 3, end: 4 };
   var FLOW = ['📦 Global + On start: Load Array → Call "Random"', '🏁 Random: Array ยังไม่ว่าง? → 🎲 สุ่ม Num → แสดงโจทย์ → เก็บ Answer → Delete', '✔️ กดปุ่มตอบ: ถูก → +1 Score · ทั้งถูกและผิด → Call "Random" ↺', '🏁 Array ว่างแล้ว → Go to layout สรุปคะแนน (แสดง Score)'];
 </script>
@@ -82,15 +122,16 @@ function login() {
 function logout() { store('ff_no', null); NO = null; ST = null; lastKey = ''; login(); }
 
 var timer = null;
-function poll() { clearTimeout(timer); api('getMyState', NO).then(function (st) { ST = st; render(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
+function poll() { clearTimeout(timer); api('getMyState', NO).then(function (st) { ST = st; ffTimerSet(st.pub); render(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
 function refresh() { lastKey = ''; clearTimeout(timer); poll(); }
 
 function meBar() {
   var m = ST.me, r = roleOf(m.role);
   $('#mebar').style.display = 'flex';
   $('#mebar').innerHTML = '<b>' + m.no + '. ' + esc(m.name) + '</b>' + (m.group ? '<span class="pill">กลุ่มบ้าน ' + m.group + '</span>' : '') + (r ? '<span class="pill role' + ROLE_IDX[r.id] + '">' + r.ic + ' ' + r.name + '</span>' : '') +
-    '<button class="ghost" style="margin-left:auto;padding:6px 12px;min-height:34px" onclick="profile()">กลุ่ม/บทบาท</button><button class="ghost" style="padding:6px 12px;min-height:34px" onclick="logout()">ออก</button>';
+    '<span class="fftimer" data-mode="small" style="margin-left:auto"></span><button class="ghost" style="padding:6px 12px;min-height:34px" onclick="profile()">กลุ่ม/บทบาท</button><button class="ghost" style="padding:6px 12px;min-height:34px" onclick="logout()">ออก</button>';
 }
+function meBarTick() { ffTimerTick(); }
 function needProfile() { return ['parsons', 'handoff', 'rules', 'build', 'peer'].indexOf(ST.pub.phase) >= 0 && (!ST.me.group || !ST.me.role); }
 function profile() {
   var m = ST.me;
@@ -105,7 +146,7 @@ function profile() {
 }
 
 function render() {
-  meBar();
+  meBar(); meBarTick();
   var p = ST.pub.phase, key = p + '|' + JSON.stringify([!!ST.pre, !!ST.post, ST.me.group, ST.me.role, ST.parsons && ST.parsons.passed, !!ST.handoff, !!ST.myRule, ST.reflect, ST.peerSent, ST.myWords.length, !!ST.goal, ST.review && ST.review.done, ST.extend, !!ST.inquiry]);
   if (HOLD && p === 'parsons') return; // ให้อ่านเฉลยการ์ดทบทวนก่อน จนกว่าจะกดเริ่มเรียงบล็อก
   if (lastKey === 'profile' && !needProfile()) return;
