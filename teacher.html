@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>Function Factory · โรงงาน Function</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="static.js"></script><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f4f7fb; --card:#fff; --ink:#1f2937; --mute:#64748b; --line:#dbe3ee; --brand:#1f3864; --ok:#15803d; --bad:#b91c1c; --warn:#b45309;
+          --c1:#c55a11; --c2:#548235; --c3:#2f5597; --c4:#bf8f00; --c1b:#fce4d6; --c2b:#e2efda; --c3b:#ddebf7; --c4b:#fff2cc; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--ink); font-size:18px; }
+  header.top { background:var(--brand); color:#fff; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  header.top h1 { font-size:20px; margin:0; font-weight:700; }
+  header.top .sub { opacity:.85; font-size:15px; }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h2 { margin:0 0 8px; font-size:21px; color:var(--brand); }
+  .mute { color:var(--mute); font-size:15px; }
+  button, .btn { font:inherit; border:0; border-radius:10px; padding:10px 16px; background:var(--brand); color:#fff; cursor:pointer; min-height:44px; }
+  button.ghost { background:#e8eef7; color:var(--brand); }
+  button.ok { background:var(--ok); } button.bad { background:var(--bad); } button.warn { background:var(--warn); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  input, textarea, select { font:inherit; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  textarea { min-height:70px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+  .pill { display:inline-block; padding:3px 10px; border-radius:999px; background:#e8eef7; color:var(--brand); font-size:14px; margin:2px; }
+  .role1 { background:var(--c1b); } .role2 { background:var(--c2b); } .role3 { background:var(--c3b); } .role4 { background:var(--c4b); }
+  .opt { display:block; width:100%; text-align:left; background:#fff; color:var(--ink); border:2px solid var(--line); margin:6px 0; }
+  .opt.sel { border-color:var(--brand); background:#e8eef7; }
+  .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
+  .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
+  .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .answer { min-height:60px; border:2px dashed #9fb3cf; border-radius:12px; padding:6px; background:#f8fbff; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#111827; color:#fff; padding:12px 18px; border-radius:12px; z-index:99; max-width:90vw; }
+  .big { font-size:28px; font-weight:700; }
+  table.t { border-collapse:collapse; width:100%; font-size:15px; }
+  table.t th, table.t td { border:1px solid var(--line); padding:6px 8px; text-align:center; vertical-align:top; }
+  table.t th { background:#d9e8f5; } table.t td.l { text-align:left; }
+  .flow { font-size:16px; line-height:1.9; }
+  @media (max-width:600px) { body { font-size:17px; } main { padding:10px; } }
+</style>
+<script>
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(msg, ms) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, ms || 2600); }
+  // เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์แบบ Promise
+  function api(fn) { var args = Array.prototype.slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { no(e); })[fn].apply(null, args); }); }
+  function fail(e) { toast('⚠️ ' + (e && e.message ? e.message : e), 4000); }
+  var ROLE_IDX = { data: 1, random: 2, check: 3, end: 4 };
+  var FLOW = ['📦 Global + On start: Load Array → Call "Random"', '🏁 Random: Array ยังไม่ว่าง? → 🎲 สุ่ม Num → แสดงโจทย์ → เก็บ Answer → Delete', '✔️ กดปุ่มตอบ: ถูก → +1 Score · ทั้งถูกและผิด → Call "Random" ↺', '🏁 Array ว่างแล้ว → Go to layout สรุปคะแนน (แสดง Score)'];
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="core.js"></script><script src="ff-api.js"></script>
+<style>
+  main { max-width:1400px; }
+  .phases button { margin:4px; background:#e8eef7; color:var(--brand); }
+  .phases button.cur { background:var(--brand); color:#fff; }
+  .w { display:inline-block; padding:6px 12px; margin:4px; border-radius:999px; color:#fff; cursor:pointer; border:0; min-height:0; }
+  table.t select { width:auto; padding:2px 4px; min-width:44px; }
+  table.t input { width:54px; padding:2px 4px; }
+  details summary { cursor:pointer; font-weight:600; color:var(--brand); }
+  .scroll { overflow-x:auto; }
+</style></head>
+<body>
+<header class="top"><h1>🏭 Function Factory · แผงครู</h1><span class="sub" id="sub"></span></header>
+<main id="app"></main>
+<script>
+var S = null, T = null, PIN = null, busy = false, OPEN = {};
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+api('getStatic').then(function (s) { S = s; PIN = store('ff_pin'); if (PIN) api('teacherLogin', PIN).then(start).catch(login); else login(); }).catch(fail);
+function login() {
+  $('#app').innerHTML = '<div class="card" style="max-width:420px"><h2>🔒 PIN ครู</h2><input id="pin" type="password" inputmode="numeric"><div class="row" style="margin-top:10px"><button id="go">เข้าสู่แผงครู</button></div><p class="mute">PIN เริ่มต้นคือ 1234 · เปลี่ยนได้ในแผงครู หัวข้อ “หลักฐานและการจัดการข้อมูล”</p></div>';
+  $('#go').onclick = function () { var p = $('#pin').value; api('teacherLogin', p).then(function () { PIN = p; store('ff_pin', p); start(); }).catch(fail); };
+}
+var timer;
+function start() { poll(); }
+function poll() { clearTimeout(timer); api('getTeacherState', PIN).then(function (t) { T = t; var a = document.activeElement; if (!busy && !(a && /INPUT|SELECT|TEXTAREA/.test(a.tagName))) draw(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
+function act(action, data, msg) { busy = true; return api('teacherAction', PIN, action, data || {}).then(function (r) { if (msg) toast(msg); busy = false; poll(); return r; }).catch(function (e) { busy = false; fail(e); }); }
+var ROLE = {};
+function roleName(id) { var r = S.roles.filter(function (x) { return x.id === id; })[0]; return r ? r.ic + ' ' + r.name : ''; }
+function sel(val, opts, attrs) { return '<select ' + attrs + '><option value=""></option>' + opts.map(function (o) { return '<option' + (String(val) === String(o) ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; }
+function sum(a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; }
+
+function draw() {
+  var P = T.pub, url = FF_BASE;
+  $('#sub').textContent = 'ขั้นปัจจุบัน: ' + ((S.phases.filter(function (x) { return x.id === P.phase; })[0] || {}).label || '');
+  var h = '<div class="card"><h2>▶️ ขั้นตอนการสอน</h2><div class="phases">' + S.phases.map(function (p) { return '<button class="' + (p.id === P.phase ? 'cur' : '') + '" data-ph="' + p.id + '">' + esc(p.label) + '</button>'; }).join('') + '</div>' +
+    '<div class="row mute" style="margin-top:8px">ลิงก์จอใหญ่: <a href="' + url + 'screen.html" target="_blank">' + url + 'screen.html</a> · ลิงก์นักเรียน: <a href="' + url + '" target="_blank">' + url + '</a></div></div>';
+
+  // แผงตามขั้น
+  if (P.phase === 'cloud') {
+    h += '<div class="card"><h2>☁️ Word Cloud · แตะคำเพื่อเปลี่ยนกลุ่มสี</h2><p class="mute">แตะวนสี: เทา → 📦 → 🎲 → ✔️ → 🏁 → ➕ ส่วนเสริม · ปุ่ม ✕ ซ่อนคำไม่เหมาะสม · ส่งแล้ว ' + P.cloudSenders + ' คน</p><div>' +
+      P.cloud.map(function (w) { var c = S.cats[w.cat] || S.cats[0]; return '<span style="white-space:nowrap"><button class="w" style="background:' + c.color + '" data-tag="' + esc(w.w) + '" data-cat="' + w.cat + '">' + esc(w.w) + ' ×' + w.n + '</button><button class="ghost" style="min-height:0;padding:2px 8px" data-hide="' + esc(w.w) + '">✕</button></span>'; }).join('') +
+      '</div><div class="row" style="margin-top:10px"><button class="' + (P.reveal ? 'ghost' : 'ok') + '" id="reveal">' + (P.reveal ? 'ซ่อนชื่อชิ้นส่วน' : '🎉 เปิดชื่อชิ้นส่วน 📦 🎲 ✔️ 🏁') + '</button></div></div>';
+  }
+  // ติดธงจากแบบทดสอบก่อนเรียน → การ์ดทบทวน (ขั้นที่ 1.1 → 2.3)
+  var flagged = T.people.filter(function (p) { return p.flag.length; });
+  var flagOpen = ['pretest', 'cloud', 'parsons', 'handoff'].indexOf(P.phase) >= 0;
+  h += '<div class="card"><details' + (flagOpen ? ' open' : '') + '><summary>🚩 ติดธงจากแบบทดสอบก่อนเรียน (ตอบผิดข้อ ' + S.flagItems.map(function (i) { return i + 1; }).join(', ') + ') · ' + flagged.length + ' คน · ตั้งเป้าหมายแล้ว ' + P.goalsDone + ' คน</summary>' +
+    (flagged.length ? '<p class="mute">แจกการ์ดทบทวน (สื่อ5) ตามเลขการ์ด แล้วให้เพื่อนคู่ (บทบาทเดียวกัน ไม่ติดธง) อธิบาย 1 นาทีในขั้นที่ 2.3 · ผู้ติดธงจะเห็นการ์ดดิจิทัลบน iPad ก่อนเริ่ม Parsons</p><div class="scroll"><table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>บทบาท</th><th>Pre</th><th>ข้อที่ผิด</th><th>การ์ดที่ใช้</th><th>เพื่อนคู่ที่แนะนำ</th><th>ทบทวนบน iPad</th><th>แจกการ์ดแล้ว</th></tr>' +
+      flagged.map(function (p) {
+        var cards = S.cards.filter(function (c) { return c.items.some(function (i) { return p.flag.indexOf(i + 1) >= 0; }); }).map(function (c) { return c.ic + c.id; }).join(' ');
+        var sp = p.support || {};
+        return '<tr><td>' + p.no + '</td><td class="l">' + esc(p.name) + '</td><td>' + (roleName(p.role).split(' ')[0] || '–') + '</td><td>' + p.pre + '</td><td>' + p.flag.join(', ') + '</td><td>' + cards + '</td><td class="l">' + esc(p.buddy || (p.role ? 'ไม่มีคู่ว่างในบทบาทนี้ ครูจับคู่เอง' : 'รอเลือกบทบาท')) + '</td><td>' + (sp.done ? '✅ ' + sp.score + '/' + sp.total : '') + '</td><td><input type="checkbox" style="width:24px;height:24px" data-cg="' + p.no + '"' + (sp.given ? ' checked' : '') + '></td></tr>';
+      }).join('') + '</table></div>' : '<p class="mute">ยังไม่มีผู้ถูกติดธง (หรือยังไม่มีใครส่งแบบทดสอบก่อนเรียน)</p>') + '</details></div>';
+  if (P.phase === 'rules' || P.phase === 'build' || P.golden) {
+    var g = P.golden || S.roles.map(function (r) { var mine = P.rules.filter(function (x) { return x.role === r.id; }); return mine.length ? mine[0].text : r.rule; });
+    h += '<div class="card"><h2>🏆 กฎทอง</h2>' + S.roles.map(function (r, i) {
+      var sub = P.rules.filter(function (x) { return x.role === r.id; });
+      return '<div style="margin:8px 0"><b>' + r.ic + ' ' + r.name + '</b>' + sub.map(function (x) { return '<div class="mute">ทีม ' + x.team + ': ' + esc(x.text) + ' <button class="ghost" style="min-height:0;padding:2px 8px" data-use="' + i + '" data-text="' + esc(x.text) + '">ใช้ข้อนี้</button></div>'; }).join('') +
+        '<textarea data-gold="' + i + '" style="min-height:44px">' + esc(g[i]) + '</textarea><div class="mute">กฎทองที่ต้องได้: ' + esc(r.rule) + ' <button class="ghost" style="min-height:0;padding:2px 8px" data-use="' + i + '" data-text="' + esc(r.rule) + '">ใช้ข้อความนี้</button></div></div>';
+    }).join('') + '<button class="ok" id="gold">✅ ยืนยันกฎทอง (ขึ้นจอใหญ่)</button></div>';
+  }
+  // กลุ่ม
+  h += '<div class="card"><h2>👥 กลุ่มบ้าน · SOS · ภารกิจต่อยอด · Rubric 2 ชิ้นงานกลุ่ม</h2><div class="scroll"><table class="t"><tr><th>กลุ่ม</th><th>สมาชิก (เลขที่ บทบาท)</th><th>เช็กลิสต์</th><th>SOS</th><th>🚀 ต่อยอด</th>' + S.rub2.map(function (r, i) { return '<th>R2-' + (i + 1) + '<br><span class="mute">' + esc(r) + '</span></th>'; }).join('') + '<th>รวม /12</th><th>เพื่อน /12</th><th>ความเห็นเพื่อน</th></tr>' +
+    T.groups.map(function (x) {
+      var ex = x.extend ? '<details><summary>' + esc(x.extend.choice) + (x.extend.mode === 'code' ? ' 🛠️' : ' 📝') + '</summary><div class="l" style="min-width:220px">' + esc(x.extend.text) + '</div></details>' : '';
+      return '<tr><td><b>' + x.group + '</b></td><td class="l">' + x.members.map(function (m) { var p = m.split(' '); return p[0] + ' ' + roleName(p[1]).split(' ')[0]; }).join(', ') + '</td><td>' + x.build.checks.filter(Boolean).length + '/5</td><td>' + (x.build.sos ? '<button class="bad" style="min-height:0;padding:4px 8px" data-sos="' + x.group + '">🆘 ช่วยแล้ว</button>' : '') + (x.sosCount ? '<div class="mute">รวม ' + x.sosCount + ' ครั้ง</div>' : '') + '</td><td>' + ex + '</td>' +
+        ['a', 'b', 'c', 'd'].map(function (k, i) { return '<td>' + sel(x.rub[i], [1, 2, 3], 'data-gr="' + x.group + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(x.rub) + '</b></td><td>' + x.peerAvg + '</td><td class="l mute">' + x.peerComments.map(function (c) { return '👍 ' + esc(c.like) + (c.suggest ? ' 💡 ' + esc(c.suggest) : ''); }).join('<br>') + '</td></tr>';
+    }).join('') + '</table></div></div>';
+  // รายบุคคล
+  h += '<div class="card"><h2>🧑‍🎓 รายบุคคล · Rubric 1 (พฤติกรรม) · Rubric 3 (คุณลักษณะ)</h2><p class="mute">ชิ้นส่วน: เช็กลิสต์ 5 รายการตามบทบาท (ผ่าน ≥ 4) · 🔴 = ลอง Parsons เกิน 3 ครั้ง เข้าไปช่วยก่อน<br>R1: ' + S.rub1.map(function (r, i) { return (i + 1) + ') ' + r; }).join(' · ') + '<br>R3: ' + S.rub3.map(function (r, i) { return (i + 1) + ') ' + r; }).join(' · ') + '</p><div class="scroll"><table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>กลุ่ม</th><th>บทบาท</th><th>Pre</th><th>🎯 เป้า</th><th>Post</th><th>N-gain</th><th>Parsons</th><th>บัตรส่งต่อ /5</th><th>ชิ้นส่วน /5</th>' +
+    [1, 2, 3, 4].map(function (i) { return '<th>R1-' + i + '</th>'; }).join('') + '<th>R1</th>' + [1, 2, 3, 4].map(function (i) { return '<th>R3-' + i + '</th>'; }).join('') + '<th>R3</th><th>R2 กลุ่ม</th><th>เพื่อน</th><th>ผล (ข้อ 6.3)</th><th>สะท้อน</th></tr>' +
+    T.people.map(function (p) {
+      var pa = p.parsons ? (p.parsons.passed ? '✅ ' : (p.parsons.attempts > 3 ? '🔴 ' : '⏳ ')) + p.parsons.first + '% ×' + p.parsons.attempts : '';
+      var items = (S.piece && S.piece[p.role]) || [];
+      var pc = '<td>' + sel(p.piece, [0, 1, 2, 3, 4, 5], 'data-pc="' + p.no + '"') + (items.length ? '<details><summary class="mute">รายการ</summary><div class="l" style="min-width:260px">' + items.map(function (t, i) { return (i + 1) + ') ' + esc(t); }).join('<br>') + '</div></details>' : '') + '</td>';
+      return '<tr><td>' + p.no + '</td><td class="l">' + esc(p.name) + (p.words ? '<div class="mute">☁️ ' + esc(p.words) + '</div>' : '') + '</td>' +
+        '<td>' + sel(p.group, [1, 2, 3, 4, 5, 6, 7, 8], 'data-sg="' + p.no + '"') + '</td><td><select data-sr="' + p.no + '"><option value=""></option>' + S.roles.map(function (r) { return '<option value="' + r.id + '"' + (p.role === r.id ? ' selected' : '') + '>' + r.ic + '</option>'; }).join('') + '</select></td>' +
+        '<td>' + (p.pre === '' ? '' : p.pre + (p.flag.length ? ' 🚩' : '') + ' <button class="ghost" style="min-height:0;padding:0 6px" data-rt="' + p.no + '" data-kind="pre">↺</button>') + '</td>' +
+        '<td>' + (p.goal ? '<span title="' + esc(p.goal.focus) + '">' + p.goal.target + ' ' + esc(p.goal.focus.split(' ')[0]) + '</span>' + (p.post !== '' ? (p.post >= p.goal.target ? ' ✅' : ' ⏳') : '') : '') + '</td><td>' + (p.post === '' ? '' : p.post + ' <button class="ghost" style="min-height:0;padding:0 6px" data-rt="' + p.no + '" data-kind="post">↺</button>') + '</td><td>' + (p.gain === null || p.gain === '' ? '' : p.gain) + '</td><td>' + pa + '</td>' +
+        '<td>' + (p.handoff ? '<details><summary>' + (p.handoff.score === '' ? 'ดู' : p.handoff.score) + '</summary><div class="l" style="min-width:260px">' + p.handoff.a.map(function (a, i) { return '<div><b>' + (i + 1) + ')</b> ' + esc(a) + '</div>'; }).join('') + '</div></details>' + sel(p.handoff.score, [0, 1, 2, 3, 4, 5], 'data-ho="' + p.no + '"') : '') + '</td>' +
+        pc + ['r1a', 'r1b', 'r1c', 'r1d'].map(function (k, i) { return '<td>' + sel(p.r1[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.r1) + '</b></td>' +
+        ['r3a', 'r3b', 'r3c', 'r3d'].map(function (k, i) { return '<td>' + sel(p.r3[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.r3) + '</b></td><td>' + (p.r2 === '' ? '' : p.r2) + '</td><td>' + (p.peer === '' ? '' : p.peer) + '</td><td class="l">' + (p.result ? (p.result === 'ผ่าน' ? '✅ ผ่าน' : '<span style="color:var(--bad)">' + esc(p.result) + '</span>') : '') + '</td>' +
+        '<td>' + (p.reflect ? '<details><summary>ดู</summary><div class="l" style="min-width:280px"><b>สัปดาห์ก่อน:</b> ' + esc(p.reflect.prior) + '<br><b>วันนี้:</b> ' + esc(p.reflect.now) + '<br><b>กฎทอง:</b> ' + esc(p.reflect.rule) + ' ' + esc(p.reflect.why) + '<br><b>ประเมินตนเอง:</b> ' + p.reflect.self.join('/') + ' · มั่นใจ ' + p.reflect.conf + (p.reflect.goalMet ? '<br><b>เป้าหมาย:</b> ' + esc(p.reflect.goalMet) + ' เพราะ ' + esc(p.reflect.goalWhy) + ' · ครั้งหน้า: ' + esc(p.reflect.goalNext) : '') + (p.reflect.inqTopic ? '<br><b>อยากค้นคว้า:</b> ' + esc(p.reflect.inqTopic) : '') + '</div></details>' : '') + '</td></tr>';
+    }).join('') + '</table></div></div>';
+  // บัดดี้หลังเรียน (ขั้นที่ 5.3): ผู้ที่ยังไม่ถึง 8/10
+  var low = T.people.filter(function (p) { return p.post !== '' && p.post < 8; });
+  if (['posttest', 'reflect', 'after'].indexOf(P.phase) >= 0 || low.length) h += '<div class="card"><details' + (['posttest', 'reflect', 'after'].indexOf(P.phase) >= 0 ? ' open' : '') + '><summary>🤝 บัดดี้หลังเรียน · ยังไม่ถึง 8/10 จำนวน ' + low.length + ' คน</summary>' +
+    (low.length ? '<p class="mute">จับคู่เพื่อนผู้เชี่ยวชาญบทบาทเดียวกันที่ได้ 8 ขึ้นไป ช่วยทบทวนก่อนชั่วโมงถัดไป แล้วให้ทดสอบซ่อม (ปุ่ม ↺ ในตารางรายบุคคล)</p><table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>บทบาท</th><th>Post</th><th>บัดดี้ที่แนะนำ</th></tr>' + low.map(function (p) { return '<tr><td>' + p.no + '</td><td class="l">' + esc(p.name) + '</td><td>' + (roleName(p.role).split(' ')[0] || '–') + '</td><td>' + p.post + '</td><td class="l">' + esc(p.postBuddy || 'ครูจับคู่เอง') + '</td></tr>'; }).join('') + '</table>' : '<p class="mute">ทุกคนที่ส่งแล้วได้ 8/10 ขึ้นไป 🎉</p>') + '</details></div>';
+  // ภารกิจค้นคว้า
+  var inq = T.people.filter(function (p) { return p.inquiry; });
+  h += '<div class="card"><details' + (['reflect', 'after'].indexOf(P.phase) >= 0 ? ' open' : '') + '><summary>🔎 ภารกิจค้นคว้าต่อยอด (ส่งแล้ว ' + inq.length + ' คน)</summary>' +
+    (inq.length ? inq.map(function (p) { return '<div style="margin:8px 0"><b>' + p.no + ' ' + esc(p.name) + '</b> <span class="pill">' + esc(p.inquiry.topic) + '</span><div style="white-space:pre-wrap">' + esc(p.inquiry.summary) + '</div>' + (p.inquiry.source ? '<div class="mute">แหล่งที่มา: ' + esc(p.inquiry.source) + '</div>' : '') + '</div>'; }).join('') : '<p class="mute">ยังไม่มีผู้ส่ง · เปิดขั้น “หลังคาบ · ภารกิจค้นคว้าต่อยอด” ให้นักเรียนส่งจากบ้านได้</p>') + '</details></div>';
+  // ตัวเลขสำหรับตาราง 8.2
+  h += '<div class="card"><details><summary>📊 ตัวเลขสำหรับบันทึกหลังการสอน (ตาราง 8.1 และ 8.2)</summary><h3>ตาราง 8.1 ผลการจัดการเรียนรู้</h3><table class="t"><tr><th>ด้าน</th><th>จำนวนผู้ผ่านเกณฑ์</th><th>ร้อยละ</th></tr>' + T.metrics81.map(function (m) { return '<tr><td class="l">' + esc(m.k) + '</td><td>' + esc(m.n) + '</td><td>' + m.p + '</td></tr>'; }).join('') + '</table><h3>ตาราง 8.2 ผลการใช้วิธีการใหม่รายตัวชี้วัด</h3><table class="t" style="margin-top:8px">' + T.metrics.map(function (m) { return '<tr><td class="l"><b>' + esc(m.k) + '</b></td><td class="l">' + esc(m.v) + '</td></tr>'; }).join('') + '</table><p class="mute">กดปุ่มดาวน์โหลด Excel ด้านล่าง จะได้ชีต “สรุปตาราง 8.1” และ “สรุปตาราง 8.2” ไว้คัดลอกลงแผน</p></details></div>';
+  // เครื่องมือ
+  h += '<div class="card"><h2>🧰 หลักฐานและการจัดการข้อมูล</h2><div class="row"><button class="ok" id="ev">📑 ดาวน์โหลด Excel หลักฐาน (รายบุคคล · รายกลุ่ม · ตาราง 8.1 · 8.2 · ข้อมูลดิบ)</button><span id="evlink"></span></div>' +
+    '<details style="margin-top:12px"><summary>ล้างข้อมูล (ใช้หลังซ้อม ก่อนสอนจริง)</summary><div class="row" style="margin-top:8px">' +
+    RESETS.map(function (x, i) { return '<button class="warn" data-reset="' + i + '">' + x[0] + '</button>'; }).join('') + '</div></details>' +
+    '<details style="margin-top:12px"><summary>เปลี่ยน PIN ครู</summary><div class="row" style="margin-top:8px"><input id="newpin" type="password" inputmode="numeric" placeholder="PIN ใหม่ (แนะนำ 6 ตัวขึ้นไป)" style="max-width:280px"><button id="pinsave">บันทึก PIN</button></div></details>' +
+    '<details style="margin-top:12px"><summary>แก้รายชื่อนักเรียน</summary><p class="mute">วางทีละบรรทัด รูปแบบ “เลขที่ ชื่อ-สกุล”</p><textarea id="ros" style="min-height:160px">' + S.roster.map(function (r) { return r.no + ' ' + r.name; }).join('\n') + '</textarea><button id="rsave">บันทึกรายชื่อ</button></details></div>';
+  // จำว่าครูเปิด/ปิดหัวข้อใดไว้ ไม่ให้หุบเองตอนรีเฟรชทุก 6 วินาที
+  var keyOf = function (d) { var s = d.querySelector('summary'); return s ? s.textContent.replace(/[\d\s·()/]+/g, '').slice(0, 24) : ''; };
+  $$('.card > details').forEach(function (d) { OPEN[keyOf(d)] = d.open; });
+  $('#app').innerHTML = h;
+  $$('.card > details').forEach(function (d) { var k = keyOf(d); if (OPEN[k] !== undefined) d.open = OPEN[k]; });
+  bind();
+}
+var RESETS = [['แบบทดสอบ + เป้าหมาย + การ์ดทบทวน', ['Tests', 'Goals', 'Support']], ['Word Cloud', ['Cloud', 'CloudTag']], ['Parsons + บัตรส่งต่องาน + กฎทอง', ['Parsons', 'Handoff', 'Rules']], ['ประกอบเกม + บั๊ก + ภารกิจต่อยอด', ['Build', 'Bugs', 'Extend']], ['ประเมินเพื่อน + สะท้อนตนเอง + ภารกิจค้นคว้า', ['Peer', 'Reflect', 'Inquiry']], ['Rubric ทั้งหมด', ['Rubric', 'GroupRubric']], ['กลุ่ม/บทบาทนักเรียน', ['Students']],
+  ['ทั้งหมด + กลับไปขั้นเริ่มต้น', ['Tests', 'Goals', 'Support', 'Cloud', 'CloudTag', 'Parsons', 'Handoff', 'Rules', 'Build', 'Bugs', 'Extend', 'Peer', 'Reflect', 'Inquiry', 'Rubric', 'GroupRubric', 'Students', 'Config']]];
+function bind() {
+  $$('[data-ph]').forEach(function (b) { b.onclick = function () { act('phase', { phase: b.dataset.ph }, 'เปลี่ยนขั้นแล้ว'); }; });
+  $$('[data-tag]').forEach(function (b) { b.onclick = function () { var c = (Number(b.dataset.cat) + 1) % S.cats.length; b.style.background = S.cats[c].color; b.dataset.cat = c; act('tag', { norm: b.dataset.tag, cat: c }); }; });
+  $$('[data-hide]').forEach(function (b) { b.onclick = function () { if (confirm('ซ่อนคำ “' + b.dataset.hide + '” จากจอใหญ่?')) act('hideWord', { norm: b.dataset.hide }); }; });
+  if ($('#reveal')) $('#reveal').onclick = function () { act('reveal', { on: !T.pub.reveal }); };
+  $$('[data-use]').forEach(function (b) { b.onclick = function () { $('[data-gold="' + b.dataset.use + '"]').value = b.dataset.text; }; });
+  if ($('#gold')) $('#gold').onclick = function () { act('golden', { rules: $$('[data-gold]').map(function (t) { return t.value.trim(); }) }, 'ยืนยันกฎทองแล้ว'); };
+  $$('[data-sos]').forEach(function (b) { b.onclick = function () { act('resolveSos', { group: b.dataset.sos }); }; });
+  $$('[data-gr]').forEach(function (s) { s.onchange = function () { act('groupRubric', { group: s.dataset.gr, key: s.dataset.k, value: s.value }); }; });
+  $$('[data-rb]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.rb, key: s.dataset.k, value: s.value }); }; });
+  $$('[data-pc]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.pc, key: 'piece', value: s.value }); }; });
+  $$('[data-ho]').forEach(function (s) { s.onchange = function () { act('handoffScore', { no: s.dataset.ho, score: s.value }); }; });
+  $$('[data-sg]').forEach(function (s) { s.onchange = function () { var p = T.people.filter(function (x) { return x.no == s.dataset.sg; })[0]; act('setStudent', { no: s.dataset.sg, group: s.value, role: p.role }); }; });
+  $$('[data-sr]').forEach(function (s) { s.onchange = function () { var p = T.people.filter(function (x) { return x.no == s.dataset.sr; })[0]; act('setStudent', { no: s.dataset.sr, group: p.group, role: s.value }); }; });
+  $$('[data-rt]').forEach(function (b) { b.onclick = function () { if (confirm('ให้เลขที่ ' + b.dataset.rt + ' ทำแบบทดสอบ' + (b.dataset.kind === 'pre' ? 'ก่อน' : 'หลัง') + 'เรียนใหม่?')) act('resetTest', { no: b.dataset.rt, kind: b.dataset.kind }); }; });
+  $$('[data-reset]').forEach(function (b) { b.onclick = function () { if (confirm('ล้างข้อมูล “' + b.textContent + '” ? ลบแล้วกู้คืนไม่ได้')) act('resetPart', { sheets: RESETS[Number(b.dataset.reset)][1] }, 'ล้างแล้ว'); }; });
+  $$('[data-cg]').forEach(function (c) { c.onchange = function () { act('cardGiven', { no: c.dataset.cg, on: c.checked }, c.checked ? 'บันทึกว่าแจกการ์ดแล้ว' : 'ยกเลิกแล้ว'); }; });
+  $('#ev').onclick = function () { busy = true; toast('กำลังสร้างไฟล์ Excel…'); ffExportExcel(PIN).then(function (n) { busy = false; $('#evlink').textContent = '✅ ดาวน์โหลดแล้ว: ' + n; }).catch(function (e) { busy = false; fail(e); }); };
+  $('#pinsave').onclick = function () { var v = $('#newpin').value.trim(); if (v.length < 4) return toast('PIN อย่างน้อย 4 ตัว'); busy = true; api('teacherAction', PIN, 'pin', { pin: v }).then(function () { PIN = v; store('ff_pin', v); busy = false; toast('เปลี่ยน PIN แล้ว'); poll(); }).catch(function (e) { busy = false; fail(e); }); };
+  $('#rsave').onclick = function () { if (confirm('แทนที่รายชื่อทั้งหมด?')) act('roster', { text: $('#ros').value }, 'บันทึกรายชื่อแล้ว').then(function () { api('getStatic').then(function (s) { S = s; }); }); };
+}
+
+ffLive(function () { if (PIN && T) poll(); });
+</script>
+</body></html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html><head><script>(function () { var v = new URLSearchParams(location.search).get("view"); if (v === "screen") location.replace("screen.html"); if (v === "teacher") location.replace("teacher.html"); })();</script><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>Function Factory · โรงงาน Function</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="static.js"></script><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f4f7fb; --card:#fff; --ink:#1f2937; --mute:#64748b; --line:#dbe3ee; --brand:#1f3864; --ok:#15803d; --bad:#b91c1c; --warn:#b45309;
+          --c1:#c55a11; --c2:#548235; --c3:#2f5597; --c4:#bf8f00; --c1b:#fce4d6; --c2b:#e2efda; --c3b:#ddebf7; --c4b:#fff2cc; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--ink); font-size:18px; }
+  header.top { background:var(--brand); color:#fff; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  header.top h1 { font-size:20px; margin:0; font-weight:700; }
+  header.top .sub { opacity:.85; font-size:15px; }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h2 { margin:0 0 8px; font-size:21px; color:var(--brand); }
+  .mute { color:var(--mute); font-size:15px; }
+  button, .btn { font:inherit; border:0; border-radius:10px; padding:10px 16px; background:var(--brand); color:#fff; cursor:pointer; min-height:44px; }
+  button.ghost { background:#e8eef7; color:var(--brand); }
+  button.ok { background:var(--ok); } button.bad { background:var(--bad); } button.warn { background:var(--warn); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  input, textarea, select { font:inherit; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  textarea { min-height:70px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+  .pill { display:inline-block; padding:3px 10px; border-radius:999px; background:#e8eef7; color:var(--brand); font-size:14px; margin:2px; }
+  .role1 { background:var(--c1b); } .role2 { background:var(--c2b); } .role3 { background:var(--c3b); } .role4 { background:var(--c4b); }
+  .opt { display:block; width:100%; text-align:left; background:#fff; color:var(--ink); border:2px solid var(--line); margin:6px 0; }
+  .opt.sel { border-color:var(--brand); background:#e8eef7; }
+  .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
+  .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
+  .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .answer { min-height:60px; border:2px dashed #9fb3cf; border-radius:12px; padding:6px; background:#f8fbff; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#111827; color:#fff; padding:12px 18px; border-radius:12px; z-index:99; max-width:90vw; }
+  .big { font-size:28px; font-weight:700; }
+  table.t { border-collapse:collapse; width:100%; font-size:15px; }
+  table.t th, table.t td { border:1px solid var(--line); padding:6px 8px; text-align:center; vertical-align:top; }
+  table.t th { background:#d9e8f5; } table.t td.l { text-align:left; }
+  .flow { font-size:16px; line-height:1.9; }
+  @media (max-width:600px) { body { font-size:17px; } main { padding:10px; } }
+</style>
+<script>
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(msg, ms) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, ms || 2600); }
+  // เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์แบบ Promise
+  function api(fn) { var args = Array.prototype.slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { no(e); })[fn].apply(null, args); }); }
+  function fail(e) { toast('⚠️ ' + (e && e.message ? e.message : e), 4000); }
+  var ROLE_IDX = { data: 1, random: 2, check: 3, end: 4 };
+  var FLOW = ['📦 Global + On start: Load Array → Call "Random"', '🏁 Random: Array ยังไม่ว่าง? → 🎲 สุ่ม Num → แสดงโจทย์ → เก็บ Answer → Delete', '✔️ กดปุ่มตอบ: ถูก → +1 Score · ทั้งถูกและผิด → Call "Random" ↺', '🏁 Array ว่างแล้ว → Go to layout สรุปคะแนน (แสดง Score)'];
+</script>
+<script src="ff-api.js"></script>
+<style>
+  .me { background:#fff; border-bottom:1px solid var(--line); padding:8px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:15px; }
+  .qn { font-weight:700; margin-top:14px; }
+  .word { display:inline-block; background:#e8eef7; border-radius:999px; padding:6px 14px; margin:4px; }
+</style></head>
+<body>
+<header class="top"><h1>🏭 โรงงาน Function</h1><span class="sub">การสร้างแบบทดสอบด้วย Array และ Function</span></header>
+<div class="me" id="mebar" style="display:none"></div>
+<main id="app"><div class="card">กำลังโหลด…</div></main>
+<script>
+var S = null, ST = null, NO = null, lastKey = '', drafting = {}, HOLD = false;
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+function seeded(n) { var s = n * 7919 + 17; return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function order(n, len) { var a = []; for (var i = 0; i < len; i++) a.push(i); var r = seeded(n); for (var j = a.length - 1; j > 0; j--) { var k = Math.floor(r() * (j + 1)); var t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+function roleOf(id) { return (S.roles.filter(function (r) { return r.id === id; })[0]) || null; }
+
+api('getStatic').then(function (s) { S = s; NO = Number(store('ff_no')) || null; if (NO) poll(); else login(); }).catch(fail);
+
+function login() {
+  $('#mebar').style.display = 'none';
+  $('#app').innerHTML = '<div class="card"><h2>👋 ลงชื่อเข้าใช้</h2><p class="mute">เลือกเลขที่และชื่อของตัวเอง</p>' +
+    '<select id="who"><option value="">— เลือกชื่อ —</option>' + S.roster.map(function (r) { return '<option value="' + r.no + '">' + r.no + '. ' + esc(r.name) + '</option>'; }).join('') + '</select>' +
+    '<div class="row" style="margin-top:12px"><button id="go">เข้าสู่กิจกรรม</button></div></div>';
+  $('#go').onclick = function () { var v = $('#who').value; if (!v) return toast('เลือกชื่อก่อนนะคะ'); api('register', Number(v), '', '').then(function () { NO = Number(v); store('ff_no', String(NO)); poll(); }).catch(fail); };
+}
+function logout() { store('ff_no', null); NO = null; ST = null; lastKey = ''; login(); }
+
+var timer = null;
+function poll() { clearTimeout(timer); api('getMyState', NO).then(function (st) { ST = st; render(); }).catch(fail).then(function () { (clearTimeout(timer), timer = setTimeout(poll, 15000)); }); }
+function refresh() { lastKey = ''; clearTimeout(timer); poll(); }
+
+function meBar() {
+  var m = ST.me, r = roleOf(m.role);
+  $('#mebar').style.display = 'flex';
+  $('#mebar').innerHTML = '<b>' + m.no + '. ' + esc(m.name) + '</b>' + (m.group ? '<span class="pill">กลุ่มบ้าน ' + m.group + '</span>' : '') + (r ? '<span class="pill role' + ROLE_IDX[r.id] + '">' + r.ic + ' ' + r.name + '</span>' : '') +
+    '<button class="ghost" style="margin-left:auto;padding:6px 12px;min-height:34px" onclick="profile()">กลุ่ม/บทบาท</button><button class="ghost" style="padding:6px 12px;min-height:34px" onclick="logout()">ออก</button>';
+}
+function needProfile() { return ['parsons', 'handoff', 'rules', 'build', 'peer'].indexOf(ST.pub.phase) >= 0 && (!ST.me.group || !ST.me.role); }
+function profile() {
+  var m = ST.me;
+  $('#app').innerHTML = '<div class="card"><h2>🎴 ใส่ข้อมูลจากการ์ดกลุ่ม-บทบาท</h2><p class="mute">ดูเลขกลุ่มบ้านและสัญลักษณ์บนการ์ดที่จับได้</p>' +
+    '<label>กลุ่มบ้าน</label><select id="g"><option value="">—</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (g) { return '<option' + (m.group == g ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select>' +
+    '<label style="display:block;margin-top:10px">บทบาท</label><div class="grid2">' + S.roles.map(function (r) { return '<button class="opt role' + ROLE_IDX[r.id] + (m.role === r.id ? ' sel' : '') + '" data-r="' + r.id + '">' + r.ic + ' ' + r.name + '</button>'; }).join('') + '</div>' +
+    '<p class="mute">กลุ่ม 3 คนที่ได้การ์ด ✔️+🏁 ให้เลือก ✔️ CheckAnswer</p><div class="row"><button id="save">บันทึก</button></div></div>';
+  var pick = m.role;
+  $$('[data-r]').forEach(function (b) { b.onclick = function () { pick = b.dataset.r; $$('[data-r]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#save').onclick = function () { var g = $('#g').value; if (!g || !pick) return toast('เลือกให้ครบทั้งกลุ่มและบทบาท'); api('register', NO, Number(g), pick).then(function () { toast('บันทึกแล้ว ✓'); refresh(); }).catch(fail); };
+  lastKey = 'profile';
+}
+
+function render() {
+  meBar();
+  var p = ST.pub.phase, key = p + '|' + JSON.stringify([!!ST.pre, !!ST.post, ST.me.group, ST.me.role, ST.parsons && ST.parsons.passed, !!ST.handoff, !!ST.myRule, ST.reflect, ST.peerSent, ST.myWords.length, !!ST.goal, ST.review && ST.review.done, ST.extend, !!ST.inquiry]);
+  if (HOLD && p === 'parsons') return; // ให้อ่านเฉลยการ์ดทบทวนก่อน จนกว่าจะกดเริ่มเรียงบล็อก
+  if (lastKey === 'profile' && !needProfile()) return;
+  if (needProfile()) { if (lastKey !== 'profile') profile(); return; }
+  if (key === lastKey) { liveUpdate(); return; }
+  lastKey = key;
+  var f = { wait: vWait, pretest: vPre, cloud: vCloud, parsons: vParsons, handoff: vHandoff, rules: vRules, build: vBuild, peer: vPeer, posttest: vPost, reflect: vReflect, after: vAfter }[p] || vWait;
+  f();
+}
+function liveUpdate() {
+  if (ST.pub.phase === 'build' && $('#sosState')) $('#sosState').innerHTML = ST.myBuild.sos ? '🆘 ส่ง SOS แล้ว รอครูหรือเพื่อนผู้เชี่ยวชาญ' : '';
+}
+function card(h, body) { return '<div class="card"><h2>' + h + '</h2>' + body + '</div>'; }
+function vWait() { $('#app').innerHTML = card('⏳ รอครูเริ่มกิจกรรม', '<p>เมื่อครูเริ่มแต่ละขั้น หน้านี้จะเปลี่ยนเอง ไม่ต้องกดรีเฟรช</p>'); }
+
+// ---------- แบบทดสอบ ----------
+function testUI(kind) {
+  var ord = order(NO + (kind === 'post' ? 100 : 0), S.tests.length), key = 'ff_' + kind + '_' + NO, ans = {};
+  try { ans = JSON.parse(store(key) || '{}'); } catch (e) { }
+  var h = '<p class="mute">10 ข้อ ข้อละ 1 คะแนน · ' + (kind === 'pre' ? 'ไม่มีผลต่อคะแนน ตอบตามที่รู้จริง' : 'ข้อสอบชุดเดียวกับก่อนเรียน แต่สลับลำดับข้อและตัวเลือกใหม่ อ่านให้ดีนะคะ') + '</p>';
+  ord.forEach(function (qi, n) {
+    var t = S.tests[qi];
+    // สลับลำดับตัวเลือกรายคน และก่อน/หลังเรียนสลับต่างกัน (ลดการจำตำแหน่งคำตอบ) · ค่าที่ส่งยังเป็นเลขตัวเลือกเดิม
+    var co = order(NO * 31 + qi * 7 + (kind === 'post' ? 500 : 0), t.c.length);
+    h += '<div class="qn">' + (n + 1) + '. ' + esc(t.q) + '</div>' + co.map(function (ci, pos) { return '<button class="opt' + (ans[qi] == ci + 1 ? ' sel' : '') + '" data-q="' + qi + '" data-c="' + (ci + 1) + '">' + 'กขคง'[pos] + '. ' + esc(t.c[ci]) + '</button>'; }).join('');
+  });
+  h += '<div class="row" style="margin-top:14px"><button id="send">ส่งคำตอบ</button><span class="mute" id="cnt"></span></div>';
+  $('#app').innerHTML = card(kind === 'pre' ? '🧾 แบบทดสอบก่อนเรียน' : '🏁 แบบทดสอบหลังเรียน', h);
+  var count = function () { $('#cnt').textContent = 'ตอบแล้ว ' + Object.keys(ans).length + '/10'; }; count();
+  $$('[data-q]').forEach(function (b) { b.onclick = function () { ans[b.dataset.q] = Number(b.dataset.c); store(key, JSON.stringify(ans)); $$('[data-q="' + b.dataset.q + '"]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); count(); }; });
+  $('#send').onclick = function () {
+    if (Object.keys(ans).length < 10) return toast('ยังตอบไม่ครบ 10 ข้อ');
+    if (!confirm('ยืนยันส่งคำตอบ? ส่งได้ครั้งเดียว')) return;
+    var arr = S.tests.map(function (_, i) { return ans[i]; });
+    $('#send').disabled = true;
+    api('submitTest', NO, kind, arr).then(function () { toast('ส่งแล้ว ✓'); store(key, null); refresh(); }).catch(function (e) { $('#send').disabled = false; fail(e); });
+  };
+}
+function vPre() {
+  if (!ST.pre) return testUI('pre');
+  if (!ST.goal) return vGoal();
+  $('#app').innerHTML = card('✅ ส่งแบบทดสอบก่อนเรียนและตั้งเป้าหมายแล้ว', goalBox() + '<p>รอครูเริ่มกิจกรรมถัดไปนะคะ</p>');
+}
+// ---------- ตั้งเป้าหมาย (ขั้นที่ 1.1) ----------
+function goalBox() { var g = ST.goal; return g ? '<div class="card" style="background:#f8fbff"><b>🎯 เป้าหมายของฉัน:</b> หลังเรียนได้ <b>' + g.target + '/10</b> · ตั้งใจเข้าใจเรื่อง ' + esc(g.focus) + (g.note ? '<div class="mute">' + esc(g.note) + '</div>' : '') + '</div>' : ''; }
+function vGoal() {
+  var pre = ST.pre.score, target = Math.min(10, Math.max(8, pre + 2)), focus = '';
+  $('#app').innerHTML = card('🎯 ตั้งเป้าหมายการเรียนรู้ของฉัน', '<p>คะแนนก่อนเรียนของฉัน <b class="big">' + pre + '/10</b> <span class="mute">(ยังไม่เฉลย จะเฉลยหลังทำแบบทดสอบหลังเรียน)</span></p>' +
+    '<div class="qn">① หลังเรียนวันนี้ ฉันตั้งใจทำคะแนนให้ได้</div><div class="row">' + [5, 6, 7, 8, 9, 10].filter(function (v) { return v >= Math.min(pre, 10); }).map(function (v) { return '<button class="opt' + (v === target ? ' sel' : '') + '" style="width:auto;flex:1;text-align:center" data-t="' + v + '">' + v + '</button>'; }).join('') + '</div>' +
+    '<div class="qn">② เรื่องที่ฉันยังไม่มั่นใจ และตั้งใจเข้าใจให้ได้ในคาบนี้</div>' + S.focus.map(function (f, i) { return '<button class="opt" data-f="' + i + '">' + esc(f) + '</button>'; }).join('') +
+    '<div class="qn">หมายเหตุถึงตัวเอง (ไม่บังคับ)</div><input id="gn" maxlength="200" placeholder="เช่น จะถามเพื่อนผู้เชี่ยวชาญเมื่อไม่เข้าใจ">' +
+    '<div class="row" style="margin-top:12px"><button id="gs">บันทึกเป้าหมาย</button></div>');
+  $$('[data-t]').forEach(function (b) { b.onclick = function () { target = Number(b.dataset.t); $$('[data-t]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $$('[data-f]').forEach(function (b) { b.onclick = function () { focus = S.focus[Number(b.dataset.f)]; $$('[data-f]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#gs').onclick = function () { if (!focus) return toast('เลือกเรื่องที่ตั้งใจเข้าใจ 1 เรื่อง'); $('#gs').disabled = true; api('submitGoal', NO, target, focus, $('#gn').value).then(function () { toast('บันทึกเป้าหมายแล้ว ✓'); refresh(); }).catch(function (e) { $('#gs').disabled = false; fail(e); }); };
+}
+function goalResult() {
+  var g = ST.goal; if (!g || !ST.post) return '';
+  var met = ST.post.score >= g.target;
+  return '<div class="card" style="background:' + (met ? '#dcfce7' : '#fff7ed') + '"><b>🎯 เป้าหมายที่ตั้งไว้ ' + g.target + '/10 → ได้จริง ' + ST.post.score + '/10 · ' + (met ? '✅ ถึงเป้าหมาย' : '⏳ ยังไม่ถึงเป้าหมาย') + '</b><div class="mute">เรื่องที่ตั้งใจเข้าใจ: ' + esc(g.focus) + '</div></div>';
+}
+function vPost() {
+  if (!ST.post) return testUI('post');
+  var p = ST.post, g = p.gain, lvl = g === null ? '–' : g >= 0.7 ? 'สูง' : g >= 0.3 ? 'ปานกลาง' : 'ต่ำ';
+  var h = goalResult() + '<div class="grid2"><div><div class="mute">ก่อนเรียน</div><div class="big">' + (p.pre === null ? '–' : p.pre) + '/10</div></div><div><div class="mute">หลังเรียน</div><div class="big">' + p.score + '/10</div></div><div><div class="mute">N-gain</div><div class="big">' + (g === null ? '–' : g) + ' <span style="font-size:18px">(' + lvl + ')</span></div></div></div>';
+  h += '<h3>เฉลยและคำอธิบาย</h3>' + S.tests.map(function (t, i) { var k = p.key[i], mine = p.answers[i]; return '<div class="qn">' + (i + 1) + '. ' + esc(t.q) + ' ' + (mine === k.a ? '✅' : '❌') + '</div><div class="mute">เฉลย: ' + esc(t.c[k.a - 1]) + (mine !== k.a ? ' · ของฉันตอบ: ' + esc(t.c[mine - 1]) : '') + '<br>💡 ' + esc(k.e) + '</div>'; }).join('');
+  $('#app').innerHTML = card('🎉 ผลแบบทดสอบหลังเรียน', h);
+}
+
+// ---------- Word Cloud ----------
+function vCloud() {
+  if (!ST.pre) return testUI('pre');
+  if (!ST.goal) return vGoal();
+  var left = 3 - ST.myWords.length;
+  $('#app').innerHTML = card('☁️ เบื้องหลังเกมแบบทดสอบ', '<p>ตอนเล่น Kahoot หรือ Quizizz <b>เบื้องหลังระบบต้องทำงานอะไรบ้าง</b> เกมถึงเล่นได้?</p><p class="mute">พิมพ์สั้น ๆ ไม่เกิน 3 คำ · ส่งได้อีก ' + left + ' คำตอบ</p>' +
+    (left > 0 ? '<div class="row"><input id="w" maxlength="40" placeholder="เช่น …" style="flex:1"><button id="send">ส่ง</button></div>' : '<p>✅ ส่งครบ 3 คำตอบแล้ว ดูบนจอใหญ่ได้เลย</p>') +
+    '<div style="margin-top:10px">' + ST.myWords.map(function (w) { return '<span class="word">' + esc(w) + '</span>'; }).join('') + '</div><p class="mute">นึกไม่ออก? ลองนึกทีละช่วง: ตอนเริ่มเกม · ตอนตอบ · ตอนจบเกม</p>');
+  if (left > 0) { var go = function () { var w = $('#w').value.trim(); if (!w) return; $('#send').disabled = true; api('submitWord', NO, w).then(function () { refresh(); }).catch(function (e) { $('#send').disabled = false; fail(e); }); }; $('#send').onclick = go; $('#w').onkeydown = function (e) { if (e.key === 'Enter') go(); }; $('#w').focus(); }
+}
+
+// ---------- Parsons ----------
+var pickOrder = [];
+// ---------- การ์ดทบทวนความรู้เดิม (ผู้ถูกติดธง · ขั้นที่ 2.3) ----------
+function cardById(id) { return S.cards.filter(function (c) { return c.id === id; })[0]; }
+function reviewCardHtml(c) { return '<div class="card" style="border-left:6px solid var(--c3)"><h2>' + c.ic + ' การ์ด ' + c.id + ' · ' + esc(c.title) + '</h2>' + c.lines.map(function (l) { return '<div class="block" style="cursor:default">' + esc(l) + '</div>'; }).join('') + '</div>'; }
+function vReview() {
+  var ids = ST.reviewCards, ans = {};
+  $('#app').innerHTML = card('🧩 การ์ดทบทวนความรู้เดิม', '<p>จากแบบทดสอบก่อนเรียน ข้อ ' + ST.flag.join(', ') + ' เป็นความรู้พื้นฐานที่ต้องใช้วันนี้ อ่านการ์ดกับ<b>เพื่อนผู้เชี่ยวชาญคู่</b> 1–2 นาที แล้วตอบคำถามเช็กความเข้าใจ จากนั้นเริ่มเรียงบล็อกได้เลย</p>') +
+    ids.map(function (id) { var c = cardById(id); return reviewCardHtml(c) + '<div class="card"><div class="qn">✔ เช็กความเข้าใจ: ' + esc(c.q) + '</div>' + c.c.map(function (x, i) { return '<button class="opt" data-rq="' + id + '" data-v="' + (i + 1) + '">' + 'กขคง'[i] + '. ' + esc(x) + '</button>'; }).join('') + '<div class="mute" id="fb' + id + '"></div></div>'; }).join('') +
+    '<div class="row"><button id="rsend">ตรวจคำตอบ</button></div>';
+  $$('[data-rq]').forEach(function (b) { b.onclick = function () { ans[b.dataset.rq] = Number(b.dataset.v); $$('[data-rq="' + b.dataset.rq + '"]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#rsend').onclick = function () {
+    if (Object.keys(ans).length < ids.length) return toast('ตอบให้ครบทุกการ์ดก่อนนะคะ');
+    $('#rsend').disabled = true;
+    api('submitReview', NO, ans).then(function (r) {
+      HOLD = true;
+      r.result.forEach(function (x) { $$('[data-rq="' + x.id + '"]').forEach(function (b) { if (Number(b.dataset.v) === x.a) b.classList.add('right'); else if (b.classList.contains('sel')) b.classList.add('wrong'); }); $('#fb' + x.id).innerHTML = (x.ok ? '✅ ถูกต้อง · ' : '❌ ยังไม่ถูก · ') + '💡 ' + esc(x.e); });
+      $('#rsend').outerHTML = '<p><b>ถูก ' + r.score + '/' + r.total + ' ข้อ</b> ถ้ายังไม่เข้าใจข้อไหน ถามเพื่อนคู่หรือครูได้เลย</p><button id="rgo">▶️ เริ่มเรียงบล็อกคำสั่ง</button>';
+      $('#rgo').onclick = function () { HOLD = false; refresh(); };
+    }).catch(function (e) { $('#rsend').disabled = false; fail(e); });
+  };
+}
+function vParsons() {
+  var t = ST.parsonsTask; if (!t) return profile();
+  if (ST.flag.length && ST.reviewCards.length && !ST.review.done) return vReview();
+  if (ST.parsons && ST.parsons.passed) {
+    $('#app').innerHTML = card('🎉 เรียงบล็อกถูกต้องแล้ว', '<p>ลองครั้งที่ ' + ST.parsons.attempts + ' · คะแนนครั้งแรก ' + ST.parsons.firstScore + '%</p><h3>🧠 โจทย์ท้าทาย</h3><p>' + esc(t.challenge) + '</p><textarea id="ch">' + esc(ST.parsons.challenge || '') + '</textarea><div class="row" style="margin-top:8px"><button id="sch">บันทึกคำตอบ</button></div>');
+    $('#sch').onclick = function () { api('submitChallenge', NO, $('#ch').value).then(function () { toast('บันทึกแล้ว ✓'); }).catch(fail); };
+    return;
+  }
+  pickOrder = [];
+  var draw = function (res) {
+    var used = {}; pickOrder.forEach(function (id) { used[id] = 1; });
+    var byId = {}; t.items.forEach(function (b) { byId[b.id] = b; });
+    $('#app').innerHTML = card(t.ic + ' เรียงบล็อกคำสั่ง: ' + t.name, '<p class="mute">แตะบล็อกด้านล่างเพื่อเรียงลงกล่องคำตอบ (' + t.length + ' บล็อก) · แตะบล็อกในกล่องเพื่อเอาออก · ⚠️ มีบล็อกหลอก 1 อันที่ไม่ควรใช้</p>' +
+      '<div class="answer" id="ans">' + (pickOrder.length ? pickOrder.map(function (id, i) { return '<button class="block' + (res && res.firstWrong === i ? ' bad' : '') + '" data-out="' + i + '">' + (i + 1) + '. ' + esc(byId[id].text) + '</button>'; }).join('') : '<p class="mute" style="margin:10px">กล่องคำตอบ</p>') + '</div>' +
+      '<h3>บล็อกคำสั่ง</h3>' + t.items.filter(function (b) { return !used[b.id]; }).map(function (b) { return '<button class="block" data-in="' + b.id + '">' + esc(b.text) + '</button>'; }).join('') +
+      '<div class="row" style="margin-top:12px"><button id="chk"' + (pickOrder.length ? '' : ' disabled') + '>ตรวจ</button><button class="ghost" id="clr">ล้าง</button><span class="mute">' + (ST.parsons ? 'ลองแล้ว ' + ST.parsons.attempts + ' ครั้ง' : '') + '</span></div>' +
+      (res ? '<p style="color:var(--bad);font-weight:600">' + (res.usedDecoy ? '⚠️ มีบล็อกหลอกอยู่ในคำตอบ ' : '') + (res.tooShort ? 'ยังเรียงไม่ครบ ' : '') + (res.firstWrong >= 0 ? 'บล็อกที่ ' + (res.firstWrong + 1) + ' ยังไม่ถูกตำแหน่ง ลองใหม่นะคะ' : '') + '</p>' : ''));
+    $$('[data-in]').forEach(function (b) { b.onclick = function () { pickOrder.push(b.dataset.in); draw(); }; });
+    $$('[data-out]').forEach(function (b) { b.onclick = function () { pickOrder.splice(Number(b.dataset.out), 1); draw(); }; });
+    $('#clr').onclick = function () { pickOrder = []; draw(); };
+    $('#chk').onclick = function () { $('#chk').disabled = true; api('checkParsons', NO, pickOrder).then(function (r) { if (r.passed) { toast('ถูกต้อง! 🎉'); refresh(); } else { if (!ST.parsons) ST.parsons = { attempts: 0 }; ST.parsons.attempts = r.attempts; draw(r); } }).catch(fail); };
+  };
+  draw();
+}
+
+// ---------- บัตรส่งต่องาน ----------
+function vHandoff() {
+  var r = roleOf(ST.me.role), a = ST.handoff || ['', '', '', '', ''];
+  $('#app').innerHTML = card('📮 บัตรส่งต่องาน · ' + r.ic + ' ' + r.name, '<p class="mute">ตอบให้ครบ 5 ช่อง ใช้ถ่ายทอดให้เพื่อนในกลุ่มบ้าน</p>' + FLOW.map(function (f) { return '<div class="mute">' + esc(f) + '</div>'; }).join('') +
+    S.handoffQ.map(function (q, i) { return '<div class="qn">' + esc(q) + '</div><textarea data-h="' + i + '">' + esc(a[i] || '') + '</textarea>'; }).join('') +
+    '<div class="row" style="margin-top:10px"><button id="send">' + (ST.handoff ? 'บันทึกการแก้ไข' : 'ส่งบัตรส่งต่องาน') + '</button></div>');
+  $('#send').onclick = function () { var v = $$('[data-h]').map(function (t) { return t.value; }); api('submitHandoff', NO, v).then(function () { toast('ส่งแล้ว ✓'); refresh(); }).catch(fail); };
+}
+
+// ---------- กฎทอง ----------
+function vRules() {
+  var r = roleOf(ST.me.role), mine = ST.myRule;
+  var golden = ST.pub.golden;
+  $('#app').innerHTML = (golden ? card('🏆 กฎทอง 4 ข้อ (ครูยืนยันแล้ว)', golden.map(function (g, i) { return '<p class="pill role' + (i + 1) + '" style="display:block;padding:10px;border-radius:10px">' + S.roles[i].ic + ' ' + esc(g) + '</p>'; }).join('')) : '') +
+    card('🏆 สรุปกฎทองของทีม ' + r.ic + ' ' + r.name, '<p class="mute">ทีมช่วยกันสรุปกฎที่สำคัญที่สุดเป็น 1 ประโยค ขึ้นต้นว่า “ต้อง…” หรือ “ห้าม…” ส่งเพียงคนเดียวต่อทีม</p>' +
+      '<label>ทีม</label><select id="team"><option' + (mine && mine.team === 'A' ? ' selected' : '') + '>A</option><option' + (mine && mine.team === 'B' ? ' selected' : '') + '>B</option></select>' +
+      '<textarea id="rt" style="margin-top:8px" placeholder="ต้อง…">' + esc(mine ? mine.text : '') + '</textarea><div class="row" style="margin-top:8px"><button id="send">ส่งกฎทอง</button></div>');
+  $('#send').onclick = function () { api('submitRule', NO, $('#team').value, $('#rt').value).then(function () { toast('ส่งแล้ว ✓'); refresh(); }).catch(fail); };
+}
+
+// ---------- ประกอบเกม ----------
+function vBuild() {
+  var b = ST.myBuild || { checks: [], sos: false };
+  var golden = ST.pub.golden || S.roles.map(function (r) { return r.rule; });
+  $('#app').innerHTML = card('🛠️ กลุ่มบ้าน ' + ST.me.group + ' · ประกอบเกม', '<p><b>กติกา:</b> เจ้าของชิ้นส่วนเป็นคนจับเมาส์เอง คนอื่นช่วยตรวจตามกฎทอง</p>' + golden.map(function (g, i) { return '<div class="mute">' + S.roles[i].ic + ' ' + esc(g) + '</div>'; }).join('')) +
+    card('✅ เช็กลิสต์ทดสอบเกม (ของทั้งกลุ่ม)', S.buildChecks.map(function (c, i) { return '<label class="row" style="margin:6px 0"><input type="checkbox" data-c="' + i + '" style="width:26px;height:26px"' + (b.checks[i] ? ' checked' : '') + '> ' + (i + 1) + ') ' + esc(c) + '</label>'; }).join('') +
+      '<div class="row" style="margin-top:8px"><button class="' + (b.sos ? 'ghost' : 'bad') + '" id="sos">' + (b.sos ? 'ยกเลิก SOS' : '🆘 ขอความช่วยเหลือ (SOS)') + '</button><span id="sosState" class="mute">' + (b.sos ? '🆘 ส่ง SOS แล้ว รอครูหรือเพื่อนผู้เชี่ยวชาญ' : '') + '</span></div><p class="mute">ก่อนกด SOS ให้ถามผู้เชี่ยวชาญบทบาทเดียวกันจากกลุ่มอื่นก่อน 1 ครั้ง</p>') +
+    card('🐞 บันทึกบั๊ก (สรุปความรู้หลังการปฏิบัติ)', '<label>เจอบั๊กอะไร (อาการ)</label><textarea id="bs"></textarea><label>แก้อย่างไร</label><textarea id="bf"></textarea><label>ตรงกับกฎทองข้อไหน</label><select id="br">' + S.roles.map(function (r) { return '<option value="' + r.ic + '">' + r.ic + ' ' + r.name + '</option>'; }).join('') + '<option value="อื่น ๆ">อื่น ๆ</option></select><div class="row" style="margin-top:8px"><button id="bsend">บันทึกบั๊ก</button></div>' +
+      (ST.myBugs && ST.myBugs.length ? '<h3>บั๊กของกลุ่ม</h3>' + ST.myBugs.map(function (x) { return '<p>• ' + esc(x.symptom) + ' → ' + esc(x.fix) + ' <span class="pill">' + esc(x.rule) + '</span></p>'; }).join('') : '')) +
+    extendCard();
+  bindExtend();
+  $$('[data-c]').forEach(function (c) { c.onchange = function () { var arr = $$('[data-c]').map(function (x) { return x.checked; }); api('updateBuild', NO, arr).catch(fail); }; });
+  $('#sos').onclick = function () { api('updateBuild', NO, null, !b.sos).then(function () { toast(b.sos ? 'ยกเลิก SOS แล้ว' : 'ส่ง SOS แล้ว'); refresh(); }).catch(fail); };
+  $('#bsend').onclick = function () { api('submitBug', NO, $('#bs').value, $('#bf').value, $('#br').value).then(function () { toast('บันทึกแล้ว ✓'); refresh(); }).catch(fail); };
+}
+
+// ---------- ภารกิจต่อยอด (ขั้นที่ 3.4 · ส่งกลุ่มละ 1 ครั้ง แก้ไขได้) ----------
+var EXT = { choice: '', mode: '' };
+function extendCard() {
+  var e = ST.extend;
+  if (e) { EXT.choice = e.choice; EXT.mode = e.mode; }
+  return card('🚀 ภารกิจต่อยอด (เลือก 1 ข้อ · ส่งกลุ่มละ 1 ครั้ง)', '<p class="mute">ประยุกต์ใช้ Array และ Function ในสถานการณ์ใหม่ · ทำหลังบันทึกบั๊กแล้ว</p>' +
+    S.extend.map(function (x) { return '<button class="opt' + (EXT.choice === x.id ? ' sel' : '') + '" data-ex="' + x.id + '"><b>' + x.id + '. ' + esc(x.title) + '</b><div class="mute">' + esc(x.hint) + '</div></button>'; }).join('') +
+    '<div class="qn">กลุ่มเราทำแบบไหน</div><div class="row">' +
+    '<button class="opt' + (EXT.mode === 'code' ? ' sel' : '') + '" style="width:auto;flex:1" data-md="code">🛠️ แก้โค้ดจริงในเกม (เกมผ่านเช็กลิสต์ครบแล้ว)</button>' +
+    '<button class="opt' + (EXT.mode === 'plan' ? ' sel' : '') + '" style="width:auto;flex:1" data-md="plan">📝 เขียนแผนการแก้ (เกมยังไม่ผ่านครบ)</button></div>' +
+    '<div class="qn">แก้ชิ้นส่วนใด ใช้คำสั่งอะไร และผลที่ได้ / ที่คาดว่าจะได้</div><textarea id="ext">' + esc(e ? e.text : '') + '</textarea>' +
+    '<div class="row" style="margin-top:8px"><button id="exsend">' + (e ? 'บันทึกการแก้ไข' : 'ส่งภารกิจต่อยอด') + '</button>' + (e ? '<span class="mute">ส่งแล้วโดย ' + esc(e.name) + '</span>' : '') + '</div>');
+}
+function bindExtend() {
+  $$('[data-ex]').forEach(function (b) { b.onclick = function () { EXT.choice = b.dataset.ex; $$('[data-ex]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $$('[data-md]').forEach(function (b) { b.onclick = function () { EXT.mode = b.dataset.md; $$('[data-md]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#exsend').onclick = function () { if (!EXT.choice || !EXT.mode) return toast('เลือกภารกิจและวิธีทำก่อนนะคะ'); api('submitExtend', NO, EXT.choice, EXT.mode, $('#ext').value).then(function () { toast('ส่งภารกิจต่อยอดแล้ว ✓'); refresh(); }).catch(fail); };
+}
+
+// ---------- ภารกิจค้นคว้าต่อยอดหลังเรียน (ขั้นที่ 5.3) ----------
+function inquiryCard() {
+  var q = ST.inquiry, topic = ST.inqTopic || '';
+  var known = S.inquiry.slice(0, -1).indexOf(topic) >= 0;
+  return card('🔎 ภารกิจค้นคว้าต่อยอดตามความสนใจ', '<p>เลือกเรื่องที่อยากทำให้เกมดีขึ้น ค้นคว้าจากคู่มือ Construct 2 (Scirra Manual) หรือแหล่งเรียนรู้ออนไลน์ แล้วสรุป 3 บรรทัด <b>ส่งก่อนชั่วโมงถัดไป</b> เพื่อนำเสนอเป็น “ส่วนเสริม” ของเกม</p>' +
+    '<label>หัวข้อ</label><select id="iqt">' + S.inquiry.map(function (x, i) { var last = i === S.inquiry.length - 1; return '<option value="' + (last ? '__other' : esc(x)) + '"' + ((known && topic === x) || (last && topic && !known) ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+    '<input id="iqo" style="margin-top:6px' + (topic && !known ? '' : ';display:none') + '" placeholder="พิมพ์หัวข้อของฉัน" value="' + (known || topic === S.inquiry[S.inquiry.length - 1] ? '' : esc(topic)) + '">' +
+    '<label style="display:block;margin-top:8px">สรุปสิ่งที่ค้นคว้าได้ (3 บรรทัด: ใช้คำสั่งอะไร · ใส่ไว้ในชิ้นส่วนใด · ทำงานอย่างไร)</label><textarea id="iqs" style="min-height:110px">' + esc(q ? q.summary : '') + '</textarea>' +
+    '<label>แหล่งที่มา (ลิงก์หรือชื่อแหล่ง)</label><input id="iqsrc" value="' + esc(q ? q.source : '') + '">' +
+    '<div class="row" style="margin-top:8px"><button id="iqsend">' + (q ? 'บันทึกการแก้ไข' : 'ส่งภารกิจค้นคว้า') + '</button>' + (q ? '<span class="mute">✅ ส่งแล้ว</span>' : '') + '</div>');
+}
+function bindInquiry() {
+  $('#iqt').onchange = function () { $('#iqo').style.display = $('#iqt').value === '__other' ? '' : 'none'; };
+  $('#iqsend').onclick = function () { var t = $('#iqt').value === '__other' ? $('#iqo').value.trim() : $('#iqt').value; api('submitInquiry', NO, t, $('#iqs').value, $('#iqsrc').value).then(function () { toast('ส่งภารกิจค้นคว้าแล้ว ✓'); refresh(); }).catch(fail); };
+}
+function vAfter() { $('#app').innerHTML = goalResult() + inquiryCard(); bindInquiry(); }
+
+// ---------- ประเมินเพื่อน ----------
+function vPeer() {
+  var g = Number(ST.me.group), partner = g % 2 ? g + 1 : g - 1, guest = ST.me.role === 'check' || ST.me.role === 'end';
+  if (!guest) { $('#app').innerHTML = card('🏠 คุณเป็น “เจ้าบ้าน” ของกลุ่ม ' + g, '<p>อยู่ประจำเครื่องของกลุ่ม นำเสนอให้แขกจากกลุ่ม ' + partner + ' ฟัง 1 นาที</p><ol><li>เกมเราทำงานอย่างไร (ชี้เส้นทางข้อมูล)</li><li>กฎทองอยู่ตรงไหนในโค้ด</li><li>บั๊กที่เราเจอ และวิธีแก้</li></ol>' + FLOW.map(function (f) { return '<div class="mute">' + esc(f) + '</div>'; }).join('')); return; }
+  if (ST.peerSent) { $('#app').innerHTML = card('✅ ส่งแบบประเมินแล้ว', '<p>กลับไปที่กลุ่มของตัวเองได้เลยค่ะ</p>'); return; }
+  var sc = {};
+  $('#app').innerHTML = card('🧳 คุณเป็น “แขก” ประเมินเกมของกลุ่ม ' + partner, '<p class="mute">เล่นเกมให้ครบ 10 ข้อ และลองตอบผิดบางข้อ แล้วให้คะแนน 1–3</p>' +
+    S.peerQ.map(function (q, i) { return '<div class="qn">' + (i + 1) + '. ' + esc(q) + '</div><div class="row">' + [3, 2, 1].map(function (v) { return '<button class="opt" style="width:auto;flex:1" data-p="' + i + '" data-v="' + v + '">' + v + (v === 3 ? ' ดี' : v === 2 ? ' พอใช้' : ' ปรับปรุง') + '</button>'; }).join('') + '</div>'; }).join('') +
+    '<label style="display:block;margin-top:10px">ชอบ…</label><textarea id="lk"></textarea><label>แนะนำ…</label><textarea id="sg"></textarea><div class="row" style="margin-top:8px"><button id="send">ส่งแบบประเมิน</button></div>');
+  $$('[data-p]').forEach(function (b) { b.onclick = function () { sc[b.dataset.p] = Number(b.dataset.v); $$('[data-p="' + b.dataset.p + '"]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#send').onclick = function () { var arr = [0, 1, 2, 3].map(function (i) { return sc[i]; }); api('submitPeer', NO, arr, $('#lk').value, $('#sg').value).then(function () { toast('ส่งแล้ว ✓'); refresh(); }).catch(fail); };
+}
+
+// ---------- สะท้อนตนเอง ----------
+function vReflect() {
+  if (!ST.post) return testUI('post');
+  if (ST.reflect) { $('#app').innerHTML = card('✅ ส่งแบบสะท้อนตนเองแล้ว', '<p>ขอบคุณค่ะ วันนี้ทุกคนคือผู้เชี่ยวชาญของโรงงาน 🏭</p>') + inquiryCard(); bindInquiry(); return; }
+  var self = {}, conf = 0, golden = ST.pub.golden || S.roles.map(function (r) { return r.rule; });
+  var g = ST.goal, met = g ? ST.post.score >= g.target : null;
+  var three = ['ฉันทำชิ้นส่วนของตนเองสำเร็จ', 'ฉันอธิบายให้เพื่อนเข้าใจได้', 'ฉันช่วยเหลือกลุ่ม'];
+  $('#app').innerHTML = card('💭 สะท้อนตนเอง', '<div class="card" style="background:#f8fbff"><b>ตอนต้นคาบ ฉันคิดว่าเบื้องหลังเกมคือ</b><div>' + (ST.myWords.length ? ST.myWords.map(function (w) { return '<span class="word">' + esc(w) + '</span>'; }).join('') : '<span class="mute">(ไม่ได้ส่งคำตอบ)</span>') + '</div></div>' +
+    '<div class="qn">1) สัปดาห์ก่อนฉันรู้ว่า …</div><textarea id="pr"></textarea><div class="qn">วันนี้ฉันต่อยอดได้ว่า …</div><textarea id="nw"></textarea>' +
+    '<div class="qn">2) กฎทองข้อที่ฉันจะไม่ลืมคือ</div><select id="gr">' + golden.map(function (g, i) { return '<option value="' + S.roles[i].ic + '">' + S.roles[i].ic + ' ' + esc(g) + '</option>'; }).join('') + '</select><div class="qn">เพราะ …</div><textarea id="why"></textarea>' +
+    '<div class="qn">3) ประเมินตนเองเรื่องบทบาท</div>' + three.map(function (t, i) { return '<div>' + t + '</div><div class="row">' + [3, 2, 1].map(function (v) { return '<button class="opt" style="width:auto;flex:1" data-s="' + i + '" data-v="' + v + '">' + v + (v === 3 ? ' มาก' : v === 2 ? ' ปานกลาง' : ' น้อย') + '</button>'; }).join('') + '</div>'; }).join('') +
+    '<div class="qn">4) ความมั่นใจในการสร้างเกมแบบทดสอบด้วยตนเอง</div><div class="row">' + [1, 2, 3, 4, 5].map(function (v) { return '<button class="opt" style="width:auto;flex:1" data-cf="' + v + '">' + v + '</button>'; }).join('') + '</div>' +
+    '<div class="qn">5) เป้าหมายของฉัน</div>' + (g ? '<div class="pill" style="display:block;padding:10px;border-radius:10px;font-size:17px;background:' + (met ? '#dcfce7' : '#fff7ed') + '">ตั้งไว้ ' + g.target + '/10 · ได้จริง ' + ST.post.score + '/10 · ' + (met ? '✅ ถึงเป้า' : '⏳ ยังไม่ถึงเป้า') + '</div>' : '<p class="mute">(ไม่ได้ตั้งเป้าหมายไว้)</p>') +
+    '<div class="qn">' + (met === false ? 'ยังไม่ถึงเป้า' : 'ถึงเป้า') + ' เพราะ …</div><textarea id="gw"></textarea><div class="qn">ครั้งหน้าฉันจะ …</div><textarea id="gx"></textarea>' +
+    '<div class="qn">6) เรื่องที่ฉันอยากค้นคว้าต่อ</div><select id="iq">' + S.inquiry.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>' +
+    '<div class="row" style="margin-top:10px"><button id="send">ส่งแบบสะท้อนตนเอง</button></div>');
+  $$('[data-s]').forEach(function (b) { b.onclick = function () { self[b.dataset.s] = Number(b.dataset.v); $$('[data-s="' + b.dataset.s + '"]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $$('[data-cf]').forEach(function (b) { b.onclick = function () { conf = Number(b.dataset.cf); $$('[data-cf]').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); }; });
+  $('#send').onclick = function () {
+    if (!self[0] || !self[1] || !self[2] || !conf) return toast('ตอบข้อ 3 และข้อ 4 ให้ครบ');
+    if (g && !$('#gw').value.trim()) return toast('ข้อ 5 เขียนเหตุผลสั้น ๆ ว่าทำไมถึงหรือไม่ถึงเป้า');
+    api('submitReflect', NO, { prior: $('#pr').value, now: $('#nw').value, rule: $('#gr').value, why: $('#why').value, r1: self[0], r2: self[1], r3: self[2], conf: conf, goalWhy: $('#gw').value, goalNext: $('#gx').value, inqTopic: $('#iq').value }).then(function () { toast('ส่งแล้ว ✓'); refresh(); }).catch(fail);
+  };
+}
+
+ffLive(function () { if (NO && ST && !HOLD) poll(); });
+</script>
+</body></html>
