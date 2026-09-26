@@ -27,6 +27,12 @@
   .opt.right { border-color:var(--ok); background:#dcfce7; } .opt.wrong { border-color:var(--bad); background:#fee2e2; }
   .block { background:#fff; border:2px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-family:Consolas,monospace; font-size:15px; white-space:pre-wrap; cursor:pointer; color:var(--ink); text-align:left; width:100%; }
   .block.bad { border-color:var(--bad); background:#fee2e2; }
+  .pz { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:grab; }
+  .pz-src { opacity:.35; }
+  .pz-ghost { position:fixed; z-index:90; pointer-events:none; opacity:.95; box-shadow:0 8px 24px rgba(15,31,61,.25); border-color:var(--brand); margin:0; cursor:grabbing; }
+  .answer.drop-hot { background:#e8f1ff; border-color:var(--brand); }
+  .pz.drop-before { box-shadow:0 -4px 0 var(--brand); }
+  .answer.drop-end { box-shadow:inset 0 -4px 0 var(--brand); }
   .answer { min-height:60px; border:2px dashed #9fb3cf; border-radius:12px; padding:6px; background:#f8fbff; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#111827; color:#fff; padding:12px 18px; border-radius:12px; z-index:99; max-width:90vw; }
   .big { font-size:28px; font-weight:700; }
@@ -202,6 +208,54 @@ function vReview() {
     }).catch(function (e) { $('#rsend').disabled = false; fail(e); });
   };
 }
+// ลากวางบล็อก Parsons (นิ้วบน iPad และเมาส์) · แตะ = เพิ่มท้ายกล่อง / เอาออก
+// done(d, pos): d = {from:'pool'|'ans', idx, id} · pos = ตำแหน่งใหม่ในกล่องคำตอบ (null = เอาออก)
+function parsonsDrag(done) {
+  var ans = $('#ans'), d = null;
+  var answerItems = function () { return $$('#ans .pz').filter(function (x) { return !d || x !== d.el; }); };
+  var clearMarks = function () { $$('#ans .pz').forEach(function (x) { x.classList.remove('drop-before'); }); ans.classList.remove('drop-end', 'drop-hot'); };
+  var target = function (x, y) {
+    var r = ans.getBoundingClientRect();
+    if (x < r.left - 20 || x > r.right + 20 || y < r.top - 30 || y > r.bottom + 30) return null;
+    var items = answerItems(), pos = items.length;
+    for (var i = 0; i < items.length; i++) { var b = items[i].getBoundingClientRect(); if (y < b.top + b.height / 2) { pos = i; break; } }
+    return { pos: pos, items: items };
+  };
+  $$('.pz').forEach(function (el) {
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return;
+      var r = el.getBoundingClientRect();
+      d = { el: el, from: el.dataset.from, idx: Number(el.dataset.idx), id: el.dataset.id, x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, on: false };
+      try { el.setPointerCapture(e.pointerId); } catch (err) { }
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!d || d.el !== el) return;
+      if (!d.on) {
+        if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < 8) return;
+        d.on = true;
+        d.ghost = el.cloneNode(true); d.ghost.classList.add('pz-ghost'); d.ghost.style.width = el.offsetWidth + 'px';
+        document.body.appendChild(d.ghost); el.classList.add('pz-src');
+      }
+      e.preventDefault();
+      d.ghost.style.left = (e.clientX - d.dx) + 'px'; d.ghost.style.top = (e.clientY - d.dy) + 'px';
+      clearMarks();
+      var t = target(e.clientX, e.clientY);
+      if (t) { ans.classList.add('drop-hot'); if (t.pos < t.items.length) t.items[t.pos].classList.add('drop-before'); else ans.classList.add('drop-end'); }
+    });
+    var finish = function (e, cancel) {
+      if (!d || d.el !== el) return;
+      var dd = d; d = null;
+      if (dd.ghost) dd.ghost.remove();
+      el.classList.remove('pz-src'); clearMarks();
+      if (cancel) return;
+      if (!dd.on) return done(dd, dd.from === 'pool' ? pickOrder.length : null);   // แตะ
+      d = dd; var t = target(e.clientX, e.clientY); d = null;
+      if (t) done(dd, t.pos); else if (dd.from === 'ans') done(dd, null);
+    };
+    el.addEventListener('pointerup', function (e) { finish(e, false); });
+    el.addEventListener('pointercancel', function (e) { finish(e, true); });
+  });
+}
 function vParsons() {
   var t = ST.parsonsTask; if (!t) return profile();
   if (ST.flag.length && ST.reviewCards.length && !ST.review.done) return vReview();
@@ -214,13 +268,16 @@ function vParsons() {
   var draw = function (res) {
     var used = {}; pickOrder.forEach(function (id) { used[id] = 1; });
     var byId = {}; t.items.forEach(function (b) { byId[b.id] = b; });
-    $('#app').innerHTML = card(t.ic + ' เรียงบล็อกคำสั่ง: ' + t.name, '<p class="mute">แตะบล็อกด้านล่างเพื่อเรียงลงกล่องคำตอบ (' + t.length + ' บล็อก) · แตะบล็อกในกล่องเพื่อเอาออก · ⚠️ มีบล็อกหลอก 1 อันที่ไม่ควรใช้</p>' +
-      '<div class="answer" id="ans">' + (pickOrder.length ? pickOrder.map(function (id, i) { return '<button class="block' + (res && res.firstWrong === i ? ' bad' : '') + '" data-out="' + i + '">' + (i + 1) + '. ' + esc(byId[id].text) + '</button>'; }).join('') : '<p class="mute" style="margin:10px">กล่องคำตอบ</p>') + '</div>' +
-      '<h3>บล็อกคำสั่ง</h3>' + t.items.filter(function (b) { return !used[b.id]; }).map(function (b) { return '<button class="block" data-in="' + b.id + '">' + esc(b.text) + '</button>'; }).join('') +
+    $('#app').innerHTML = card(t.ic + ' เรียงบล็อกคำสั่ง: ' + t.name, '<p class="mute">✋ <b>ลาก</b>บล็อกด้านล่างไปวางในกล่องคำตอบตามลำดับ (' + t.length + ' บล็อก) หรือแตะเพื่อเพิ่ม · ลากในกล่องเพื่อสลับลำดับ · ลากออกนอกกล่องหรือแตะเพื่อเอาออก · ⚠️ มีบล็อกหลอก 1 อันที่ไม่ควรใช้</p>' +
+      '<div class="answer" id="ans">' + (pickOrder.length ? pickOrder.map(function (id, i) { return '<div class="block pz' + (res && res.firstWrong === i ? ' bad' : '') + '" data-from="ans" data-idx="' + i + '" data-id="' + id + '">' + (i + 1) + '. ' + esc(byId[id].text) + '</div>'; }).join('') : '<p class="mute" style="margin:10px">กล่องคำตอบ · ลากบล็อกมาวางที่นี่</p>') + '</div>' +
+      '<h3>บล็อกคำสั่ง</h3><div id="pool">' + t.items.filter(function (b) { return !used[b.id]; }).map(function (b) { return '<div class="block pz" data-from="pool" data-id="' + b.id + '">' + esc(b.text) + '</div>'; }).join('') + '</div>' +
       '<div class="row" style="margin-top:12px"><button id="chk"' + (pickOrder.length ? '' : ' disabled') + '>ตรวจ</button><button class="ghost" id="clr">ล้าง</button><span class="mute">' + (ST.parsons ? 'ลองแล้ว ' + ST.parsons.attempts + ' ครั้ง' : '') + '</span></div>' +
       (res ? '<p style="color:var(--bad);font-weight:600">' + (res.usedDecoy ? '⚠️ มีบล็อกหลอกอยู่ในคำตอบ ' : '') + (res.tooShort ? 'ยังเรียงไม่ครบ ' : '') + (res.firstWrong >= 0 ? 'บล็อกที่ ' + (res.firstWrong + 1) + ' ยังไม่ถูกตำแหน่ง ลองใหม่นะคะ' : '') + '</p>' : ''));
-    $$('[data-in]').forEach(function (b) { b.onclick = function () { pickOrder.push(b.dataset.in); draw(); }; });
-    $$('[data-out]').forEach(function (b) { b.onclick = function () { pickOrder.splice(Number(b.dataset.out), 1); draw(); }; });
+    parsonsDrag(function (d, pos) {
+      if (d.from === 'ans') pickOrder.splice(d.idx, 1);
+      if (pos !== null) pickOrder.splice(pos, 0, d.id);
+      draw();
+    });
     $('#clr').onclick = function () { pickOrder = []; draw(); };
     $('#chk').onclick = function () { $('#chk').disabled = true; api('checkParsons', NO, pickOrder).then(function (r) { if (r.passed) { toast('ถูกต้อง! 🎉'); refresh(); } else { if (!ST.parsons) ST.parsons = { attempts: 0 }; ST.parsons.attempts = r.attempts; draw(r); } }).catch(fail); };
   };
