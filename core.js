@@ -8,6 +8,8 @@ function publicState_() { return FFPUB; }
 function auth_() { }
 function flagOf_(s) { try { return JSON.parse(s || '[]'); } catch (e) { return []; } }
 function ss_() { return FFSS || { getUrl: function () { return ''; } }; }
+function testKey_() { return FFDB.Key || []; }
+function ansOf_(t) { if (!t) return []; try { return JSON.parse(t.raw || '[]'); } catch (e) { return []; } }
 function ngain_(pre, post) { if (pre === '' || post === '' || pre === null || post === null) return null; pre = Number(pre); post = Number(post); if (pre >= 10) return null; return Math.round((post - pre) / (10 - pre) * 100) / 100; }
 function uniq_(a) { var o = {}; a.forEach(function (x) { o[x] = 1; }); return Object.keys(o); }
 function getTeacherState(pin) {
@@ -30,7 +32,10 @@ function getTeacherState(pin) {
       goal: by(goals, r.no)[0] ? (function (g) { return { target: Number(g.target), focus: g.focus, note: g.note }; })(by(goals, r.no)[0]) : null,
       flag: pre ? flagOf_(pre.answers) : [],
       support: by(support, r.no)[0] ? (function (s) { return { given: String(s.given) === 'true', done: String(s.reviewDone) === 'true', score: s.reviewScore, total: s.reviewTotal }; })(by(support, r.no)[0]) : null,
-      inquiry: by(inquiry, r.no)[0] ? (function (q) { return { topic: q.topic, summary: q.summary, source: q.source }; })(by(inquiry, r.no)[0]) : null
+      inquiry: by(inquiry, r.no)[0] ? (function (q) { return { topic: q.topic, summary: q.summary, source: q.source }; })(by(inquiry, r.no)[0]) : null,
+      preAns: ansOf_(pre), postAns: ansOf_(post),
+      rule: (function (x) { return x ? { team: x.team, text: x.text } : null; })(by(rows_('Rules'), r.no)[0]),
+      peerGiven: (function (x) { return x ? { to: x.toGroup, s: [x.s1, x.s2, x.s3, x.s4], like: x.like, suggest: x.suggest } : null; })(by(rows_('Peer'), r.no)[0])
     };
   });
   // เสนอเพื่อนคู่ให้ผู้ถูกติดธง: บทบาทเดียวกัน ไม่ติดธง ผลก่อนเรียนสูงสุด และยังไม่ได้คู่
@@ -48,7 +53,8 @@ function getTeacherState(pin) {
     var bd = build.filter(function (x) { return Number(x.group) === g; })[0];
     return { group: g, members: people.filter(function (p) { return Number(p.group) === g; }).map(function (p) { return p.no + ' ' + p.role; }), build: pub.build[g] || { checks: [], sos: false },
       peerAvg: peerAvg, peerComments: ps.map(function (p) { return { like: p.like, suggest: p.suggest }; }), rub: [gr.a, gr.b, gr.c, gr.d],
-      extend: ex ? { choice: ex.choice, mode: ex.mode, text: ex.text } : null, sosCount: bd ? Number(bd.sosCount) || 0 : 0 };
+      extend: ex ? { choice: ex.choice, mode: ex.mode, text: ex.text } : null, sosCount: bd ? Number(bd.sosCount) || 0 : 0,
+      bugs: rows_('Bugs').filter(function (b) { return Number(b.group) === g; }).map(function (b) { return { symptom: b.symptom, fix: b.fix, rule: b.rule, name: b.name }; }) };
   });
   // คะแนนกลุ่ม (Rubric 2 และคะแนนจากเพื่อน) บันทึกให้สมาชิกทุกคน แล้วสรุปผลตามเกณฑ์ผ่านในแผน ข้อ 6.3
   var sumv = function (a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length === a.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; };
@@ -67,7 +73,7 @@ function getTeacherState(pin) {
       || people.filter(function (q) { return q.post !== '' && q.post >= 8 && !taken2[q.no]; }).sort(function (a, b) { return b.post - a.post; })[0];
     if (cand) { taken2[cand.no] = 1; p.postBuddy = cand.no + ' ' + cand.name; } else p.postBuddy = '';
   });
-  return { pub: pub, people: people, groups: groups, metrics: metrics_(people, groups), metrics81: metrics81_(people, groups, pub), cfg: { phase: config_().phase, reveal: config_().reveal }, sheetUrl: ss_().getUrl() };
+  return { pub: pub, people: people, groups: groups, key: testKey_(), metrics: metrics_(people, groups), metrics81: metrics81_(people, groups, pub), cfg: { phase: config_().phase, reveal: config_().reveal }, sheetUrl: ss_().getUrl() };
 }
 function metrics_(people, groups) {
   var n = function (f) { return people.filter(f).length; };

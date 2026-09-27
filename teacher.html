@@ -205,6 +205,7 @@ function draw() {
   // ตัวเลขสำหรับตาราง 8.2
   h += '<div class="card"><details><summary>📊 ตัวเลขสำหรับบันทึกหลังการสอน (ตาราง 8.1 และ 8.2)</summary><h3>ตาราง 8.1 ผลการจัดการเรียนรู้</h3><table class="t"><tr><th>ด้าน</th><th>จำนวนผู้ผ่านเกณฑ์</th><th>ร้อยละ</th></tr>' + T.metrics81.map(function (m) { return '<tr><td class="l">' + esc(m.k) + '</td><td>' + esc(m.n) + '</td><td>' + m.p + '</td></tr>'; }).join('') + '</table><h3>ตาราง 8.2 ผลการใช้วิธีการใหม่รายตัวชี้วัด</h3><table class="t" style="margin-top:8px">' + T.metrics.map(function (m) { return '<tr><td class="l"><b>' + esc(m.k) + '</b></td><td class="l">' + esc(m.v) + '</td></tr>'; }).join('') + '</table><p class="mute">กดปุ่มดาวน์โหลด Excel ด้านล่าง จะได้ชีต “สรุปตาราง 8.1” และ “สรุปตาราง 8.2” ไว้คัดลอกลงแผน</p></details></div>';
   // เครื่องมือ
+  h += '<div class="card"><h2>🖨️ หลักฐานงานนักเรียนแบบใบงาน (A4)</h2><p class="mute">รวมงานทุกชิ้นที่นักเรียนทำบน iPad ออกมาเป็นใบงานคนละ 1 หน้า พร้อมแบบบันทึกคะแนนก่อน–หลังเรียนของทั้งห้อง · สั่งพิมพ์หรือบันทึกเป็น PDF ได้</p><div class="row"><select id="pwWho" style="max-width:320px"><option value="">ทุกคนที่มีงาน</option>' + T.people.map(function (p) { return '<option value="' + p.no + '">' + p.no + '. ' + esc(p.name) + '</option>'; }).join('') + '</select><button class="ok" id="pwGo">🖨️ เปิดใบงานสำหรับพิมพ์</button></div></div>';
   h += '<div class="card"><h2>🧰 หลักฐานและการจัดการข้อมูล</h2><div class="row"><button class="ok" id="ev">📑 ดาวน์โหลด Excel หลักฐาน (รายบุคคล · รายกลุ่ม · ตาราง 8.1 · 8.2 · ข้อมูลดิบ)</button><span id="evlink"></span></div>' +
     '<details style="margin-top:12px"><summary>ล้างข้อมูล (ใช้หลังซ้อม ก่อนสอนจริง)</summary><div class="row" style="margin-top:8px">' +
     RESETS.map(function (x, i) { return '<button class="warn" data-reset="' + i + '">' + x[0] + '</button>'; }).join('') + '</div></details>' +
@@ -218,6 +219,75 @@ function draw() {
   bind();
   ffTimerTick();
 }
+// ---------- พิมพ์หลักฐานงานนักเรียนแบบใบงาน (A4 · หนึ่งคนต่อหน้า) ----------
+var PW_CSS = '@page{size:A4;margin:14mm 14mm 12mm}' +
+  '#pw{position:fixed;inset:0;z-index:200;background:#e5e7eb;overflow:auto}#pw .bar{position:sticky;top:0;background:#1f3864;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:2}' +
+  '#pw .sheet{background:#fff;width:210mm;min-height:297mm;margin:12px auto;padding:14mm;box-sizing:border-box;font-size:13.5px;line-height:1.38;color:#111}' +
+  '#pw .hd{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px;font-size:13px}' +
+  '#pw h1{font-size:17px;text-align:center;margin:2px 0}#pw h2{font-size:14.5px;margin:6px 0 3px;background:#e2efda;padding:2px 8px;border-left:5px solid #548235}' +
+  '#pw table{border-collapse:collapse;width:100%;margin:2px 0}#pw td,#pw th{border:1px solid #444;padding:1px 4px;font-size:12.5px;vertical-align:top}#pw th{background:#e2efda}' +
+  '#pw .ans{font-family:inherit;border-bottom:1px dotted #555;min-height:16px;padding:0 4px;color:#1d4ed8}#pw .muted{color:#555;font-size:12.5px}#pw .ok{color:#15803d;font-weight:700}#pw .no{color:#b91c1c;font-weight:700}' +
+  '#pw .sig{margin-top:8px;text-align:right}' +
+  '@media print{body>*:not(#pw){display:none!important}#pw{position:static;background:#fff;overflow:visible}#pw .bar{display:none}#pw .sheet{margin:0;padding:0;width:auto;min-height:0;page-break-after:always}#pw .sheet:last-child{page-break-after:auto}}';
+function pwE(v) { return v === undefined || v === null || v === '' ? '<span class="muted">– ไม่ได้ส่ง –</span>' : esc(v); }
+function pwHead(title) { return '<div class="hd"><span>โรงเรียนหนองหงส์พิทยาคม สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาบุรีรัมย์</span><span>แผนการจัดการเรียนรู้ที่ 18</span></div><h1>' + title + '</h1>'; }
+function pwStudent(p) {
+  var R = S.roles.filter(function (r) { return r.id === p.role; })[0], key = T.key || [], G = T.groups.filter(function (g) { return g.group === Number(p.group); })[0];
+  var L = 'กขคง', sumA = function (a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length === a.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; };
+  var mark = function (ans, i) { var a = ans[i]; if (!a) return ''; return L[a - 1] + ' ' + (key[i] ? (Number(a) === Number(key[i]) ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') : ''); };
+  var h = pwHead('ใบงานนักเรียน · การสร้างแบบทดสอบด้วย Array และ Function') +
+    '<div>ชื่อ-สกุล <b>' + esc(p.name) + '</b> &nbsp; เลขที่ <b>' + p.no + '</b> &nbsp; ชั้น ม.5 &nbsp; กลุ่มบ้าน <b>' + (p.group || '–') + '</b> &nbsp; บทบาท <b>' + (R ? R.ic + ' ' + esc(R.name) : '–') + '</b></div>';
+  // 1 แบบทดสอบ
+  h += '<h2>1. แบบทดสอบก่อนเรียน / หลังเรียน (K)</h2><table><tr><th>ข้อ</th>' + S.tests.map(function (_, i) { return '<th>' + (i + 1) + '</th>'; }).join('') + '<th>คะแนน</th></tr>' +
+    '<tr><td>ก่อนเรียน</td>' + S.tests.map(function (_, i) { return '<td style="text-align:center">' + mark(p.preAns || [], i) + '</td>'; }).join('') + '<td style="text-align:center"><b>' + (p.pre === '' ? '–' : p.pre + '/10') + '</b></td></tr>' +
+    '<tr><td>หลังเรียน</td>' + S.tests.map(function (_, i) { return '<td style="text-align:center">' + mark(p.postAns || [], i) + '</td>'; }).join('') + '<td style="text-align:center"><b>' + (p.post === '' ? '–' : p.post + '/10') + '</b></td></tr></table>' +
+    '<div>N-gain <b>' + (p.gain === '' || p.gain === null ? '–' : p.gain) + '</b> · เป้าหมายที่ตั้งไว้ <b>' + (p.goal ? p.goal.target + '/10' : '–') + '</b>' + (p.goal && p.post !== '' ? ' → ' + (p.post >= p.goal.target ? '<span class="ok">ถึงเป้าหมาย</span>' : '<span class="no">ยังไม่ถึงเป้าหมาย</span>') : '') +
+    ' · เรื่องที่ตั้งใจเข้าใจ: ' + pwE(p.goal && p.goal.focus) + '</div>';
+  // 2 ความรู้เดิม
+  h += '<h2>2. ความรู้เดิม (ขั้นที่ 1–2)</h2><div>คำตอบ Word Cloud “เบื้องหลังเกมแบบทดสอบ”: <span class="ans">' + pwE(p.words) + '</span></div>' +
+    (p.flag && p.flag.length ? '<div>ติดธงจากแบบทดสอบก่อนเรียนข้อ ' + p.flag.join(', ') + ' · การ์ดทบทวน: ' + (p.support && p.support.done ? 'ตอบคำถามเช็กถูก ' + p.support.score + '/' + p.support.total : 'ยังไม่ได้ทบทวนบน iPad') + (p.support && p.support.given ? ' · ได้รับการ์ดทบทวน' : '') + '</div>' : '');
+  // 3 Parsons
+  h += '<h2>3. เรียงบล็อกคำสั่ง (Parsons Problem)</h2>' + (p.parsons ? '<div>ลอง ' + p.parsons.attempts + ' ครั้ง · คะแนนครั้งแรก ' + p.parsons.first + '% · ' + (p.parsons.passed ? '<span class="ok">เรียงถูกต้อง</span>' : '<span class="no">ยังไม่ผ่าน</span>') + '</div>' +
+    '<div>โจทย์ท้าทาย: ' + (R ? esc(R.challenge) : '') + '<div class="ans">' + pwE(p.parsons.challenge) + '</div></div>' : '<div class="muted">– ไม่ได้ส่ง –</div>');
+  // 4 บัตรส่งต่องาน + กฎทอง
+  h += '<h2>4. บัตรส่งต่องาน · กฎทอง (K)</h2><table>' + S.handoffQ.map(function (q, i) { return '<tr><td style="width:34%">' + esc(q) + '</td><td class="ans">' + pwE(p.handoff && p.handoff.a[i]) + '</td></tr>'; }).join('') + '</table>' +
+    '<div>คะแนนจากครู <b>' + (p.handoff && p.handoff.score !== '' && p.handoff.score !== undefined ? p.handoff.score + '/5' : '–') + '</b>' + (p.rule ? ' · กฎทองที่ส่ง (ทีม ' + esc(p.rule.team) + '): <span class="ans">' + esc(p.rule.text) + '</span>' : '') + '</div>';
+  // 5 งานกลุ่ม
+  h += '<h2>5. งานกลุ่มบ้าน ' + (p.group || '') + ' (P)</h2>' + (G ? '<div>เช็กลิสต์ทดสอบเกม: ' + S.buildChecks.map(function (c, i) { return (G.build.checks[i] ? '☑' : '☐') + ' ' + esc(c); }).join(' &nbsp; ') + '</div>' +
+    '<div>บันทึกบั๊ก: ' + (G.bugs && G.bugs.length ? '<table><tr><th>เจอบั๊กอะไร</th><th>แก้อย่างไร</th><th>กฎทอง</th></tr>' + G.bugs.map(function (b) { return '<tr><td>' + esc(b.symptom) + '</td><td>' + esc(b.fix) + '</td><td>' + esc(b.rule) + '</td></tr>'; }).join('') + '</table>' : '<span class="muted">– ไม่ได้บันทึก –</span>') + '</div>' +
+    '<div>ภารกิจต่อยอด: ' + (G.extend ? '<b>' + esc(G.extend.choice) + '</b> (' + (G.extend.mode === 'code' ? 'แก้โค้ดจริง' : 'เขียนแผน') + ') <span class="ans">' + esc(G.extend.text) + '</span>' : '<span class="muted">– ไม่ได้ส่ง –</span>') + '</div>' : '<div class="muted">– ยังไม่ได้เข้ากลุ่ม –</div>');
+  if (p.peerGiven) h += '<div>ประเมินเกมของกลุ่ม ' + p.peerGiven.to + ': ' + S.peerQ.map(function (q, i) { return (i + 1) + ') ' + p.peerGiven.s[i]; }).join(' · ') + ' · ชอบ: <span class="ans">' + pwE(p.peerGiven.like) + '</span> · แนะนำ: <span class="ans">' + pwE(p.peerGiven.suggest) + '</span></div>';
+  // 6 สะท้อนตนเอง
+  var rf = p.reflect;
+  h += '<h2>6. สะท้อนตนเอง · ภารกิจค้นคว้า (A)</h2>' + (rf ? '<table>' +
+    [['สัปดาห์ก่อนฉันรู้ว่า', rf.prior], ['วันนี้ฉันต่อยอดได้ว่า', rf.now], ['กฎทองที่ฉันจะไม่ลืม', (rf.rule || '') + ' เพราะ ' + (rf.why || '')], ['ประเมินตนเอง (สำเร็จ/อธิบาย/ช่วยกลุ่ม)', (rf.self || []).join(' / ') + ' · ความมั่นใจ ' + (rf.conf || '–') + '/5'],
+      ['เป้าหมาย', (rf.goalMet || '–') + ' เพราะ ' + (rf.goalWhy || '') + ' · ครั้งหน้าฉันจะ ' + (rf.goalNext || '')], ['เรื่องที่อยากค้นคว้าต่อ', rf.inqTopic]].map(function (x) { return '<tr><td style="width:34%">' + x[0] + '</td><td class="ans">' + pwE(x[1]) + '</td></tr>'; }).join('') + '</table>' : '<div class="muted">– ไม่ได้ส่งแบบสะท้อนตนเอง –</div>') +
+    '<div>ภารกิจค้นคว้าต่อยอด: ' + (p.inquiry ? '<b>' + esc(p.inquiry.topic) + '</b> <span class="ans">' + esc(p.inquiry.summary) + '</span>' + (p.inquiry.source ? ' <span class="muted">(ที่มา: ' + esc(p.inquiry.source) + ')</span>' : '') : '<span class="muted">– ไม่ได้ส่ง –</span>') + '</div>';
+  // 7 ผลการประเมินของครู
+  h += '<h2>7. ผลการประเมินของครู</h2><table><tr><th>หลังเรียน /10</th><th>บัตรส่งต่อ /5</th><th>ชิ้นส่วน /5</th><th>Rubric 1 /12</th><th>Rubric 2 /12</th><th>เพื่อน /12</th><th>Rubric 3 /12</th><th>ผล</th></tr><tr style="text-align:center"><td>' +
+    [p.post, p.handoff ? p.handoff.score : '', p.piece, sumA(p.r1), p.r2, p.peer, sumA(p.r3)].map(function (v) { return v === '' || v === undefined || v === null ? '' : v; }).join('</td><td>') + '</td><td>' + esc(p.result || '') + '</td></tr></table>' +
+    '<div class="sig">ลงชื่อ ........................................ ผู้ประเมิน<br>(นางสาวทัศนีย์ ศรีทน)</div>';
+  return '<div class="sheet">' + h + '</div>';
+}
+function pwSummary(list) {
+  var pass = list.filter(function (p) { return p.post !== '' && p.post >= 8; }).length, done = list.filter(function (p) { return p.post !== ''; }).length;
+  return '<div class="sheet">' + pwHead('แบบบันทึกคะแนน ผลการทดสอบก่อนเรียน – หลังเรียน (K)') + '<table><tr><th>เลขที่</th><th>ชื่อ - สกุล</th><th>ก่อนเรียน (10)</th><th>หลังเรียน (10)</th><th>N-gain</th><th>เป้าหมาย</th><th>ผลการประเมิน</th></tr>' +
+    list.map(function (p) { return '<tr><td style="text-align:center">' + p.no + '</td><td>' + esc(p.name) + '</td><td style="text-align:center">' + (p.pre === '' ? '' : p.pre) + '</td><td style="text-align:center">' + (p.post === '' ? '' : p.post) + '</td><td style="text-align:center">' + (p.gain === '' || p.gain === null ? '' : p.gain) + '</td><td style="text-align:center">' + (p.goal ? p.goal.target : '') + '</td><td style="text-align:center">' + (p.post === '' ? '' : p.post >= 8 ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>'; }).join('') + '</table>' +
+    '<p><b>นักเรียนที่ผ่านเกณฑ์ต้องทำแบบทดสอบหลังเรียน ถูกต้องร้อยละ 80 ขึ้นไป</b><br>ผลการประเมิน &nbsp; นักเรียนทั้งหมด ' + done + ' คน · ผ่านเกณฑ์ ' + pass + ' คน คิดเป็นร้อยละ ' + (done ? Math.round(pass / done * 10000) / 100 : '–') + ' · ไม่ผ่าน ' + (done - pass) + ' คน · N-gain เฉลี่ยของห้อง ' + (T.pub.gainAvg === null ? '–' : T.pub.gainAvg) + '</p>' +
+    '<div class="sig">ลงชื่อ ........................................ ผู้ประเมิน<br>(นางสาวทัศนีย์ ศรีทน)</div></div>';
+}
+function printWork() {
+  var who = $('#pwWho') ? $('#pwWho').value : '';
+  var list = T.people.filter(function (p) { return who ? String(p.no) === who : (p.pre !== '' || p.post !== '' || p.words || p.handoff || p.reflect); });
+  if (!list.length) return toast('ยังไม่มีงานนักเรียนให้พิมพ์');
+  busy = true;
+  var old = document.getElementById('pw'); if (old) old.remove();
+  var d = document.createElement('div'); d.id = 'pw';
+  d.innerHTML = '<style>' + PW_CSS + '</style><div class="bar"><b>🖨️ หลักฐานงานนักเรียน (' + list.length + ' คน)</b><button onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button><button class="ghost" onclick="document.getElementById(\'pw\').remove();busy=false;">ปิด</button><span style="opacity:.8;font-size:14px">ในหน้าพิมพ์ เลือก “บันทึกเป็น PDF” ได้ · กระดาษ A4</span></div>' +
+    (who ? '' : pwSummary(T.people.filter(function (p) { return p.pre !== '' || p.post !== ''; }))) + list.map(pwStudent).join('');
+  document.body.appendChild(d);
+}
+
 var RESETS = [['แบบทดสอบ + เป้าหมาย + การ์ดทบทวน', ['Tests', 'Goals', 'Support']], ['Word Cloud', ['Cloud', 'CloudTag']], ['Parsons + บัตรส่งต่องาน + กฎทอง', ['Parsons', 'Handoff', 'Rules']], ['ประกอบเกม + บั๊ก + ภารกิจต่อยอด', ['Build', 'Bugs', 'Extend']], ['ประเมินเพื่อน + สะท้อนตนเอง + ภารกิจค้นคว้า', ['Peer', 'Reflect', 'Inquiry']], ['Rubric ทั้งหมด', ['Rubric', 'GroupRubric']], ['กลุ่ม/บทบาทนักเรียน', ['Students']],
   ['ทั้งหมด + กลับไปขั้นเริ่มต้น', ['Tests', 'Goals', 'Support', 'Cloud', 'CloudTag', 'Parsons', 'Handoff', 'Rules', 'Build', 'Bugs', 'Extend', 'Peer', 'Reflect', 'Inquiry', 'Rubric', 'GroupRubric', 'Students', 'Config']]];
 function bind() {
@@ -233,6 +303,7 @@ function bind() {
   $$('[data-sos]').forEach(function (b) { b.onclick = function () { act('resolveSos', { group: b.dataset.sos }); }; });
   $$('[data-gr]').forEach(function (s) { s.onchange = function () { act('groupRubric', { group: s.dataset.gr, key: s.dataset.k, value: s.value }); }; });
   $$('[data-rb]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.rb, key: s.dataset.k, value: s.value }); }; });
+  if ($('#pwGo')) $('#pwGo').onclick = printWork;
   $$('[data-pc]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.pc, key: 'piece', value: s.value }); }; });
   $$('[data-ho]').forEach(function (s) { s.onchange = function () { act('handoffScore', { no: s.dataset.ho, score: s.value }); }; });
   $$('[data-sg]').forEach(function (s) { s.onchange = function () { var p = T.people.filter(function (x) { return x.no == s.dataset.sg; })[0]; act('setStudent', { no: s.dataset.sg, group: s.value, role: p.role }); }; });
