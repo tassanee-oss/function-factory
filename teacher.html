@@ -122,6 +122,7 @@ function act(action, data, msg) { busy = true; return api('teacherAction', PIN, 
 var ROLE = {};
 function roleName(id) { var r = S.roles.filter(function (x) { return x.id === id; })[0]; return r ? r.ic + ' ' + r.name : ''; }
 function sel(val, opts, attrs) { return '<select ' + attrs + '><option value=""></option>' + opts.map(function (o) { return '<option' + (String(val) === String(o) ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; }
+function ck5(marks, attr, no) { var m = String(marks || ''); return '<div style="white-space:nowrap">' + [0, 1, 2, 3, 4].map(function (i) { return '<label style="font-size:12px"><input type="checkbox" style="width:18px;height:18px;padding:0;vertical-align:middle" ' + attr + '="' + no + '" data-i="' + i + '"' + (m[i] === '1' ? ' checked' : '') + '>' + (i + 1) + '</label>'; }).join(' ') + '</div>'; }
 function sum(a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; }
 
 // ตัวจับเวลา: นับถอยหลังขั้นปัจจุบัน · +1 นาที · ตั้งเวลาแต่ละขั้น · เวลาที่ใช้จริงเทียบแผน
@@ -172,11 +173,11 @@ function draw() {
     }).join('') + '<button class="ok" id="gold">✅ ยืนยันกฎทอง (ขึ้นจอใหญ่)</button></div>';
   }
   // กลุ่ม
-  h += '<div class="card"><h2>👥 กลุ่มบ้าน · SOS · ภารกิจต่อยอด · Rubric 2 ชิ้นงานกลุ่ม</h2><div class="scroll"><table class="t"><tr><th>กลุ่ม</th><th>สมาชิก (เลขที่ บทบาท)</th><th>เช็กลิสต์</th><th>SOS</th><th>🚀 ต่อยอด</th>' + S.rub2.map(function (r, i) { return '<th>R2-' + (i + 1) + '<br><span class="mute">' + esc(r) + '</span></th>'; }).join('') + '<th>รวม /12</th><th>เพื่อน /12</th><th>ความเห็นเพื่อน</th></tr>' +
+  h += '<div class="card"><h2>👥 กลุ่มบ้าน · SOS · ภารกิจต่อยอด · Rubric 2 ชิ้นงานกลุ่ม</h2><div class="scroll"><table class="t"><tr><th>กลุ่ม</th><th>สมาชิก (เลขที่ บทบาท)</th><th>เช็กลิสต์</th><th>SOS</th><th>🚀 ต่อยอด</th>' + S.rub2.map(function (r, i) { return '<th>R2-' + (i + 1) + '<br><span class="mute">' + esc(r) + '</span></th>'; }).join('') + '<th>รวม /12</th><th>เพื่อน /12</th>' + [1, 2, 3, 4].map(function (i) { return '<th>R4-' + i + '<br><span class="mute">' + esc(S.rubrics.r4.short[i - 1].replace(/^\d\. /, '')) + '</span></th>'; }).join('') + '<th>ต่อยอด /12</th><th>ความเห็นเพื่อน</th></tr>' +
     T.groups.map(function (x) {
       var ex = x.extend ? '<details><summary>' + esc(x.extend.choice) + (x.extend.mode === 'code' ? ' 🛠️' : ' 📝') + '</summary><div class="l" style="min-width:220px">' + esc(x.extend.text) + '</div></details>' : '';
       return '<tr><td><b>' + x.group + '</b></td><td class="l">' + x.members.map(function (m) { var p = m.split(' '); return p[0] + ' ' + roleName(p[1]).split(' ')[0]; }).join(', ') + '</td><td>' + x.build.checks.filter(Boolean).length + '/5</td><td>' + (x.build.sos ? '<button class="bad" style="min-height:0;padding:4px 8px" data-sos="' + x.group + '">🆘 ช่วยแล้ว</button>' : '') + (x.sosCount ? '<div class="mute">รวม ' + x.sosCount + ' ครั้ง</div>' : '') + '</td><td>' + ex + '</td>' +
-        ['a', 'b', 'c', 'd'].map(function (k, i) { return '<td>' + sel(x.rub[i], [1, 2, 3], 'data-gr="' + x.group + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(x.rub) + '</b></td><td>' + x.peerAvg + '</td><td class="l mute">' + x.peerComments.map(function (c) { return '👍 ' + esc(c.like) + (c.suggest ? ' 💡 ' + esc(c.suggest) : ''); }).join('<br>') + '</td></tr>';
+        ['a', 'b', 'c', 'd'].map(function (k, i) { return '<td>' + sel(x.rub[i], [1, 2, 3], 'data-gr="' + x.group + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(x.rub) + '</b></td><td>' + x.peerAvg + '</td>' + ['x1', 'x2', 'x3', 'x4'].map(function (k, i) { return '<td>' + sel((x.x || [])[i], [1, 2, 3], 'data-gr="' + x.group + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(x.x || []) + '</b></td><td class="l mute">' + x.peerComments.map(function (c) { return '👍 ' + esc(c.like) + (c.suggest ? ' 💡 ' + esc(c.suggest) : ''); }).join('<br>') + '</td></tr>';
     }).join('') + '</table></div></div>';
   // รายบุคคล
   h += '<div class="card"><h2>🧑‍🎓 รายบุคคล · Rubric 1 (พฤติกรรม) · Rubric 3 (คุณลักษณะ)</h2><p class="mute">ชิ้นส่วน: เช็กลิสต์ 5 รายการตามบทบาท (ผ่าน ≥ 4) · 🔴 = ลอง Parsons เกิน 3 ครั้ง เข้าไปช่วยก่อน<br>R1: ' + S.rub1.map(function (r, i) { return (i + 1) + ') ' + r; }).join(' · ') + '<br>R3: ' + S.rub3.map(function (r, i) { return (i + 1) + ') ' + r; }).join(' · ') + '</p><div class="scroll"><table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>กลุ่ม</th><th>บทบาท</th><th>Pre</th><th>🎯 เป้า</th><th>Post</th><th>N-gain</th><th>Parsons</th><th>บัตรส่งต่อ /5</th><th>ชิ้นส่วน /5</th>' +
@@ -184,16 +185,22 @@ function draw() {
     T.people.map(function (p) {
       var pa = p.parsons ? (p.parsons.passed ? '✅ ' : (p.parsons.attempts > 3 ? '🔴 ' : '⏳ ')) + p.parsons.first + '% ×' + p.parsons.attempts : '';
       var items = (S.piece && S.piece[p.role]) || [];
-      var pc = '<td>' + sel(p.piece, [0, 1, 2, 3, 4, 5], 'data-pc="' + p.no + '"') + (items.length ? '<details><summary class="mute">รายการ</summary><div class="l" style="min-width:260px">' + items.map(function (t, i) { return (i + 1) + ') ' + esc(t); }).join('<br>') + '</div></details>' : '') + '</td>';
+      var pc = '<td><b>' + (p.piece === '' ? '' : p.piece) + '</b>' + ck5(p.pieceMarks, 'data-pk', p.no) + (items.length ? '<details><summary class="mute">รายการ</summary><div class="l" style="min-width:260px">' + items.map(function (t, i) { return (i + 1) + ') ' + esc(t); }).join('<br>') + '</div></details>' : '') + '</td>';
       return '<tr><td>' + p.no + '</td><td class="l">' + esc(p.name) + (p.words ? '<div class="mute">☁️ ' + esc(p.words) + '</div>' : '') + '</td>' +
         '<td>' + sel(p.group, [1, 2, 3, 4, 5, 6, 7, 8], 'data-sg="' + p.no + '"') + '</td><td><select data-sr="' + p.no + '"><option value=""></option>' + S.roles.map(function (r) { return '<option value="' + r.id + '"' + (p.role === r.id ? ' selected' : '') + '>' + r.ic + '</option>'; }).join('') + '</select></td>' +
         '<td>' + (p.pre === '' ? '' : p.pre + (p.flag.length ? ' 🚩' : '') + ' <button class="ghost" style="min-height:0;padding:0 6px" data-rt="' + p.no + '" data-kind="pre">↺</button>') + '</td>' +
         '<td>' + (p.goal ? '<span title="' + esc(p.goal.focus) + '">' + p.goal.target + ' ' + esc(p.goal.focus.split(' ')[0]) + '</span>' + (p.post !== '' ? (p.post >= p.goal.target ? ' ✅' : ' ⏳') : '') : '') + '</td><td>' + (p.post === '' ? '' : p.post + ' <button class="ghost" style="min-height:0;padding:0 6px" data-rt="' + p.no + '" data-kind="post">↺</button>') + '</td><td>' + (p.gain === null || p.gain === '' ? '' : p.gain) + '</td><td>' + pa + '</td>' +
-        '<td>' + (p.handoff ? '<details><summary>' + (p.handoff.score === '' ? 'ดู' : p.handoff.score) + '</summary><div class="l" style="min-width:260px">' + p.handoff.a.map(function (a, i) { return '<div><b>' + (i + 1) + ')</b> ' + esc(a) + '</div>'; }).join('') + '</div></details>' + sel(p.handoff.score, [0, 1, 2, 3, 4, 5], 'data-ho="' + p.no + '"') : '') + '</td>' +
+        '<td>' + (p.handoff ? '<details><summary>' + (p.handoff.score === '' ? 'ดู' : p.handoff.score) + '</summary><div class="l" style="min-width:260px">' + p.handoff.a.map(function (a, i) { return '<div><b>' + (i + 1) + ')</b> ' + esc(a) + '</div>'; }).join('') + '</div></details>' + ck5(p.handoff.marks, 'data-hk', p.no) : '') + '</td>' +
         pc + ['r1a', 'r1b', 'r1c', 'r1d'].map(function (k, i) { return '<td>' + sel(p.r1[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.r1) + '</b></td>' +
         ['r3a', 'r3b', 'r3c', 'r3d'].map(function (k, i) { return '<td>' + sel(p.r3[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.r3) + '</b></td><td>' + (p.r2 === '' ? '' : p.r2) + '</td><td>' + (p.peer === '' ? '' : p.peer) + '</td><td class="l">' + (p.result ? (p.result === 'ผ่าน' ? '✅ ผ่าน' : '<span style="color:var(--bad)">' + esc(p.result) + '</span>') : '') + '</td>' +
         '<td>' + (p.reflect ? '<details><summary>ดู</summary><div class="l" style="min-width:280px"><b>สัปดาห์ก่อน:</b> ' + esc(p.reflect.prior) + '<br><b>วันนี้:</b> ' + esc(p.reflect.now) + '<br><b>กฎทอง:</b> ' + esc(p.reflect.rule) + ' ' + esc(p.reflect.why) + '<br><b>ประเมินตนเอง:</b> ' + p.reflect.self.join('/') + ' · มั่นใจ ' + p.reflect.conf + (p.reflect.goalMet ? '<br><b>เป้าหมาย:</b> ' + esc(p.reflect.goalMet) + ' เพราะ ' + esc(p.reflect.goalWhy) + ' · ครั้งหน้า: ' + esc(p.reflect.goalNext) : '') + (p.reflect.inqTopic ? '<br><b>อยากค้นคว้า:</b> ' + esc(p.reflect.inqTopic) : '') + '</div></details>' : '') + '</td></tr>';
     }).join('') + '</table></div></div>';
+  // Rubric 5 ใฝ่เรียนรู้ + สมรรถนะ C
+  h += '<div class="card"><details><summary>🌱 Rubric 5 ใฝ่เรียนรู้/กำกับตนเอง (A) · สมรรถนะสำคัญ (C)</summary><p class="mute">R5: ' + S.rubrics.r5.short.join(' · ') + ' (ผ่าน ≥ 10)<br>C: ' + S.rubrics.c.short.join(' · ') + ' (ผ่าน ≥ 7) · หลักฐานช่วยให้คะแนน: 🎯 เป้าหมาย · 📝 สะท้อน · 🔎 ค้นคว้า</p><div class="scroll"><table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>หลักฐาน</th>' +
+    [1, 2, 3, 4].map(function (i) { return '<th>R5-' + i + '</th>'; }).join('') + '<th>R5</th>' + [1, 2, 3].map(function (i) { return '<th>C-' + i + '</th>'; }).join('') + '<th>C</th></tr>' +
+    T.people.map(function (p) { return '<tr><td>' + p.no + '</td><td class="l">' + esc(p.name) + '</td><td>' + (p.goal ? '🎯' : '') + (p.reflect ? '📝' : '') + (p.reflect && p.reflect.goalNext ? '➡️' : '') + (p.inquiry ? '🔎' : '') + '</td>' +
+      ['r5a', 'r5b', 'r5c', 'r5d'].map(function (k, i) { return '<td>' + sel(p.r5[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.r5) + '</b></td>' +
+      ['c1', 'c2', 'c3'].map(function (k, i) { return '<td>' + sel(p.c[i], [1, 2, 3], 'data-rb="' + p.no + '" data-k="' + k + '"') + '</td>'; }).join('') + '<td><b>' + sum(p.c) + '</b></td></tr>'; }).join('') + '</table></div></details></div>';
   // บัดดี้หลังเรียน (ขั้นที่ 5.3): ผู้ที่ยังไม่ถึง 8/10
   var low = T.people.filter(function (p) { return p.post !== '' && p.post < 8; });
   if (['posttest', 'reflect', 'after'].indexOf(P.phase) >= 0 || low.length) h += '<div class="card"><details' + (['posttest', 'reflect', 'after'].indexOf(P.phase) >= 0 ? ' open' : '') + '><summary>🤝 บัดดี้หลังเรียน · ยังไม่ถึง 8/10 จำนวน ' + low.length + ' คน</summary>' +
@@ -205,7 +212,7 @@ function draw() {
   // ตัวเลขสำหรับตาราง 8.2
   h += '<div class="card"><details><summary>📊 ตัวเลขสำหรับบันทึกหลังการสอน (ตาราง 8.1 และ 8.2)</summary><h3>ตาราง 8.1 ผลการจัดการเรียนรู้</h3><table class="t"><tr><th>ด้าน</th><th>จำนวนผู้ผ่านเกณฑ์</th><th>ร้อยละ</th></tr>' + T.metrics81.map(function (m) { return '<tr><td class="l">' + esc(m.k) + '</td><td>' + esc(m.n) + '</td><td>' + m.p + '</td></tr>'; }).join('') + '</table><h3>ตาราง 8.2 ผลการใช้วิธีการใหม่รายตัวชี้วัด</h3><table class="t" style="margin-top:8px">' + T.metrics.map(function (m) { return '<tr><td class="l"><b>' + esc(m.k) + '</b></td><td class="l">' + esc(m.v) + '</td></tr>'; }).join('') + '</table><p class="mute">กดปุ่มดาวน์โหลด Excel ด้านล่าง จะได้ชีต “สรุปตาราง 8.1” และ “สรุปตาราง 8.2” ไว้คัดลอกลงแผน</p></details></div>';
   // เครื่องมือ
-  h += '<div class="card"><h2>🖨️ หลักฐานงานนักเรียนแบบใบงาน (A4)</h2><p class="mute">รวมงานทุกชิ้นที่นักเรียนทำบน iPad ออกมาเป็นใบงานคนละ 1 หน้า พร้อมแบบบันทึกคะแนนก่อน–หลังเรียนของทั้งห้อง · สั่งพิมพ์หรือบันทึกเป็น PDF ได้</p><div class="row"><select id="pwWho" style="max-width:320px"><option value="">ทุกคนที่มีงาน</option>' + T.people.map(function (p) { return '<option value="' + p.no + '">' + p.no + '. ' + esc(p.name) + '</option>'; }).join('') + '</select><button class="ok" id="pwGo">🖨️ เปิดใบงานสำหรับพิมพ์</button></div></div>';
+  h += printCard();
   h += '<div class="card"><h2>🧰 หลักฐานและการจัดการข้อมูล</h2><div class="row"><button class="ok" id="ev">📑 ดาวน์โหลด Excel หลักฐาน (รายบุคคล · รายกลุ่ม · ตาราง 8.1 · 8.2 · ข้อมูลดิบ)</button><span id="evlink"></span></div>' +
     '<details style="margin-top:12px"><summary>ล้างข้อมูล (ใช้หลังซ้อม ก่อนสอนจริง)</summary><div class="row" style="margin-top:8px">' +
     RESETS.map(function (x, i) { return '<button class="warn" data-reset="' + i + '">' + x[0] + '</button>'; }).join('') + '</div></details>' +
@@ -219,73 +226,247 @@ function draw() {
   bind();
   ffTimerTick();
 }
-// ---------- พิมพ์หลักฐานงานนักเรียนแบบใบงาน (A4 · หนึ่งคนต่อหน้า) ----------
-var PW_CSS = '@page{size:A4;margin:14mm 14mm 12mm}' +
-  '#pw{position:fixed;inset:0;z-index:200;background:#e5e7eb;overflow:auto}#pw .bar{position:sticky;top:0;background:#1f3864;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:2}' +
-  '#pw .sheet{background:#fff;width:210mm;min-height:297mm;margin:12px auto;padding:14mm;box-sizing:border-box;font-size:13.5px;line-height:1.38;color:#111}' +
-  '#pw .hd{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px;font-size:13px}' +
-  '#pw h1{font-size:17px;text-align:center;margin:2px 0}#pw h2{font-size:14.5px;margin:6px 0 3px;background:#e2efda;padding:2px 8px;border-left:5px solid #548235}' +
-  '#pw table{border-collapse:collapse;width:100%;margin:2px 0}#pw td,#pw th{border:1px solid #444;padding:1px 4px;font-size:12.5px;vertical-align:top}#pw th{background:#e2efda}' +
-  '#pw .ans{font-family:inherit;border-bottom:1px dotted #555;min-height:16px;padding:0 4px;color:#1d4ed8}#pw .muted{color:#555;font-size:12.5px}#pw .ok{color:#15803d;font-weight:700}#pw .no{color:#b91c1c;font-weight:700}' +
-  '#pw .sig{margin-top:8px;text-align:right}' +
-  '@media print{body>*:not(#pw){display:none!important}#pw{position:static;background:#fff;overflow:visible}#pw .bar{display:none}#pw .sheet{margin:0;padding:0;width:auto;min-height:0;page-break-after:always}#pw .sheet:last-child{page-break-after:auto}}';
-function pwE(v) { return v === undefined || v === null || v === '' ? '<span class="muted">– ไม่ได้ส่ง –</span>' : esc(v); }
-function pwHead(title) { return '<div class="hd"><span>โรงเรียนหนองหงส์พิทยาคม สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาบุรีรัมย์</span><span>แผนการจัดการเรียนรู้ที่ 18</span></div><h1>' + title + '</h1>'; }
-function pwStudent(p) {
-  var R = S.roles.filter(function (r) { return r.id === p.role; })[0], key = T.key || [], G = T.groups.filter(function (g) { return g.group === Number(p.group); })[0];
-  var L = 'กขคง', sumA = function (a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length === a.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; };
-  var mark = function (ans, i) { var a = ans[i]; if (!a) return ''; return L[a - 1] + ' ' + (key[i] ? (Number(a) === Number(key[i]) ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') : ''); };
-  var h = pwHead('ใบงานนักเรียน · การสร้างแบบทดสอบด้วย Array และ Function') +
-    '<div>ชื่อ-สกุล <b>' + esc(p.name) + '</b> &nbsp; เลขที่ <b>' + p.no + '</b> &nbsp; ชั้น ม.5 &nbsp; กลุ่มบ้าน <b>' + (p.group || '–') + '</b> &nbsp; บทบาท <b>' + (R ? R.ic + ' ' + esc(R.name) : '–') + '</b></div>';
-  // 1 แบบทดสอบ
-  h += '<h2>1. แบบทดสอบก่อนเรียน / หลังเรียน (K)</h2><table><tr><th>ข้อ</th>' + S.tests.map(function (_, i) { return '<th>' + (i + 1) + '</th>'; }).join('') + '<th>คะแนน</th></tr>' +
-    '<tr><td>ก่อนเรียน</td>' + S.tests.map(function (_, i) { return '<td style="text-align:center">' + mark(p.preAns || [], i) + '</td>'; }).join('') + '<td style="text-align:center"><b>' + (p.pre === '' ? '–' : p.pre + '/10') + '</b></td></tr>' +
-    '<tr><td>หลังเรียน</td>' + S.tests.map(function (_, i) { return '<td style="text-align:center">' + mark(p.postAns || [], i) + '</td>'; }).join('') + '<td style="text-align:center"><b>' + (p.post === '' ? '–' : p.post + '/10') + '</b></td></tr></table>' +
-    '<div>N-gain <b>' + (p.gain === '' || p.gain === null ? '–' : p.gain) + '</b> · เป้าหมายที่ตั้งไว้ <b>' + (p.goal ? p.goal.target + '/10' : '–') + '</b>' + (p.goal && p.post !== '' ? ' → ' + (p.post >= p.goal.target ? '<span class="ok">ถึงเป้าหมาย</span>' : '<span class="no">ยังไม่ถึงเป้าหมาย</span>') : '') +
-    ' · เรื่องที่ตั้งใจเข้าใจ: ' + pwE(p.goal && p.goal.focus) + '</div>';
-  // 2 ความรู้เดิม
-  h += '<h2>2. ความรู้เดิม (ขั้นที่ 1–2)</h2><div>คำตอบ Word Cloud “เบื้องหลังเกมแบบทดสอบ”: <span class="ans">' + pwE(p.words) + '</span></div>' +
-    (p.flag && p.flag.length ? '<div>ติดธงจากแบบทดสอบก่อนเรียนข้อ ' + p.flag.join(', ') + ' · การ์ดทบทวน: ' + (p.support && p.support.done ? 'ตอบคำถามเช็กถูก ' + p.support.score + '/' + p.support.total : 'ยังไม่ได้ทบทวนบน iPad') + (p.support && p.support.given ? ' · ได้รับการ์ดทบทวน' : '') + '</div>' : '');
-  // 3 Parsons
-  h += '<h2>3. เรียงบล็อกคำสั่ง (Parsons Problem)</h2>' + (p.parsons ? '<div>ลอง ' + p.parsons.attempts + ' ครั้ง · คะแนนครั้งแรก ' + p.parsons.first + '% · ' + (p.parsons.passed ? '<span class="ok">เรียงถูกต้อง</span>' : '<span class="no">ยังไม่ผ่าน</span>') + '</div>' +
-    '<div>โจทย์ท้าทาย: ' + (R ? esc(R.challenge) : '') + '<div class="ans">' + pwE(p.parsons.challenge) + '</div></div>' : '<div class="muted">– ไม่ได้ส่ง –</div>');
-  // 4 บัตรส่งต่องาน + กฎทอง
-  h += '<h2>4. บัตรส่งต่องาน · กฎทอง (K)</h2><table>' + S.handoffQ.map(function (q, i) { return '<tr><td style="width:34%">' + esc(q) + '</td><td class="ans">' + pwE(p.handoff && p.handoff.a[i]) + '</td></tr>'; }).join('') + '</table>' +
-    '<div>คะแนนจากครู <b>' + (p.handoff && p.handoff.score !== '' && p.handoff.score !== undefined ? p.handoff.score + '/5' : '–') + '</b>' + (p.rule ? ' · กฎทองที่ส่ง (ทีม ' + esc(p.rule.team) + '): <span class="ans">' + esc(p.rule.text) + '</span>' : '') + '</div>';
-  // 5 งานกลุ่ม
-  h += '<h2>5. งานกลุ่มบ้าน ' + (p.group || '') + ' (P)</h2>' + (G ? '<div>เช็กลิสต์ทดสอบเกม: ' + S.buildChecks.map(function (c, i) { return (G.build.checks[i] ? '☑' : '☐') + ' ' + esc(c); }).join(' &nbsp; ') + '</div>' +
-    '<div>บันทึกบั๊ก: ' + (G.bugs && G.bugs.length ? '<table><tr><th>เจอบั๊กอะไร</th><th>แก้อย่างไร</th><th>กฎทอง</th></tr>' + G.bugs.map(function (b) { return '<tr><td>' + esc(b.symptom) + '</td><td>' + esc(b.fix) + '</td><td>' + esc(b.rule) + '</td></tr>'; }).join('') + '</table>' : '<span class="muted">– ไม่ได้บันทึก –</span>') + '</div>' +
-    '<div>ภารกิจต่อยอด: ' + (G.extend ? '<b>' + esc(G.extend.choice) + '</b> (' + (G.extend.mode === 'code' ? 'แก้โค้ดจริง' : 'เขียนแผน') + ') <span class="ans">' + esc(G.extend.text) + '</span>' : '<span class="muted">– ไม่ได้ส่ง –</span>') + '</div>' : '<div class="muted">– ยังไม่ได้เข้ากลุ่ม –</div>');
-  if (p.peerGiven) h += '<div>ประเมินเกมของกลุ่ม ' + p.peerGiven.to + ': ' + S.peerQ.map(function (q, i) { return (i + 1) + ') ' + p.peerGiven.s[i]; }).join(' · ') + ' · ชอบ: <span class="ans">' + pwE(p.peerGiven.like) + '</span> · แนะนำ: <span class="ans">' + pwE(p.peerGiven.suggest) + '</span></div>';
-  // 6 สะท้อนตนเอง
-  var rf = p.reflect;
-  h += '<h2>6. สะท้อนตนเอง · ภารกิจค้นคว้า (A)</h2>' + (rf ? '<table>' +
-    [['สัปดาห์ก่อนฉันรู้ว่า', rf.prior], ['วันนี้ฉันต่อยอดได้ว่า', rf.now], ['กฎทองที่ฉันจะไม่ลืม', (rf.rule || '') + ' เพราะ ' + (rf.why || '')], ['ประเมินตนเอง (สำเร็จ/อธิบาย/ช่วยกลุ่ม)', (rf.self || []).join(' / ') + ' · ความมั่นใจ ' + (rf.conf || '–') + '/5'],
-      ['เป้าหมาย', (rf.goalMet || '–') + ' เพราะ ' + (rf.goalWhy || '') + ' · ครั้งหน้าฉันจะ ' + (rf.goalNext || '')], ['เรื่องที่อยากค้นคว้าต่อ', rf.inqTopic]].map(function (x) { return '<tr><td style="width:34%">' + x[0] + '</td><td class="ans">' + pwE(x[1]) + '</td></tr>'; }).join('') + '</table>' : '<div class="muted">– ไม่ได้ส่งแบบสะท้อนตนเอง –</div>') +
-    '<div>ภารกิจค้นคว้าต่อยอด: ' + (p.inquiry ? '<b>' + esc(p.inquiry.topic) + '</b> <span class="ans">' + esc(p.inquiry.summary) + '</span>' + (p.inquiry.source ? ' <span class="muted">(ที่มา: ' + esc(p.inquiry.source) + ')</span>' : '') : '<span class="muted">– ไม่ได้ส่ง –</span>') + '</div>';
-  // 7 ผลการประเมินของครู
-  h += '<h2>7. ผลการประเมินของครู</h2><table><tr><th>หลังเรียน /10</th><th>บัตรส่งต่อ /5</th><th>ชิ้นส่วน /5</th><th>Rubric 1 /12</th><th>Rubric 2 /12</th><th>เพื่อน /12</th><th>Rubric 3 /12</th><th>ผล</th></tr><tr style="text-align:center"><td>' +
-    [p.post, p.handoff ? p.handoff.score : '', p.piece, sumA(p.r1), p.r2, p.peer, sumA(p.r3)].map(function (v) { return v === '' || v === undefined || v === null ? '' : v; }).join('</td><td>') + '</td><td>' + esc(p.result || '') + '</td></tr></table>' +
-    '<div class="sig">ลงชื่อ ........................................ ผู้ประเมิน<br>(นางสาวทัศนีย์ ศรีทน)</div>';
-  return '<div class="sheet">' + h + '</div>';
+// ---------- ศูนย์พิมพ์: ใบงานนักเรียน · ใบงานกลุ่ม · แบบบันทึกผลการประเมินของครู (รูปแบบเดียวกับภาคผนวกในแผน) ----------
+var PW_CSS = '@page{size:A4;margin:12mm 12mm 12mm}' +
+  '#pw{position:fixed;inset:0;z-index:200;background:#d1d5db;overflow:auto}#pw .bar{position:sticky;top:0;background:#1f3864;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:2;flex-wrap:wrap}' +
+  '#pw .sheet{background:#fff;width:210mm;min-height:297mm;margin:12px auto;padding:12mm;box-sizing:border-box;font-family:"Sarabun",sans-serif;font-size:14px;line-height:1.3;color:#000}' +
+  '#pw .sheet.ns{min-height:0}#pw .ttl{text-align:center;font-weight:700;font-size:18px;margin:0 0 2px}#pw .sub{text-align:center;font-weight:700;margin:0 0 8px}' +
+  '#pw table{border-collapse:collapse;width:100%;margin:4px 0 8px;page-break-inside:auto}#pw tr{page-break-inside:avoid}#pw td,#pw th{border:1px solid #000;padding:1px 5px;font-size:13.5px;line-height:1.25;vertical-align:middle}' +
+  '#pw th{background:#E2EFDA;font-weight:700;text-align:center}#pw td.gt,#pw th.gt{background:#A9D08E;text-align:center;font-weight:700;font-size:16px}#pw td.lb{background:#E2EFDA;font-weight:700;width:30%}' +
+  '#pw .c{text-align:center}#pw .a{color:#1d4ed8}#pw .muted{color:#666}#pw .ok{color:#15803d;font-weight:700}#pw .no{color:#b91c1c;font-weight:700}' +
+  '#pw .who{margin:0 0 6px}#pw .who b{color:#1d4ed8;font-weight:600}#pw .circ{display:inline-block;border:2px solid #1d4ed8;border-radius:50%;padding:0 4px;line-height:1.1;color:#1d4ed8}' +
+  '#pw .q{margin:4px 0 0;font-weight:700}#pw .chs{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;padding-left:22px}#pw .ch{display:block}#pw .sig{margin-top:8px;text-align:right}#pw .res{margin-top:8px}#pw .res span{display:inline-block;min-width:120px}' +
+  '#pw .box{border:1px solid #000;padding:4px 8px;margin:4px 0 8px}#pw .pb{page-break-before:always}#pw .note{font-size:14px;margin:4px 0}' +
+  '@media print{html,body{background:#fff!important}body>*:not(#pw){display:none!important}#pw{position:static;background:#fff;overflow:visible}#pw .bar{display:none}#pw .sheet{margin:0;padding:0;width:auto;min-height:0;box-shadow:none;page-break-after:always}#pw .sheet:last-child{page-break-after:auto}}';
+var PW_SCHOOL = 'รายวิชาเพิ่มเติม คอมพิวเตอร์ 4 รหัสวิชา ว32281 ชั้นมัธยมศึกษาปีที่ 5 · แผนการจัดการเรียนรู้ที่ 18 เรื่อง การสร้างแบบทดสอบด้วย Array และ Function';
+function pwV(v) { return v === undefined || v === null || v === '' ? '' : v; }
+function pwA(v) { return v === undefined || v === null || String(v).trim() === '' ? '<span class="muted">– ไม่ได้ส่ง –</span>' : '<span class="a">' + esc(v) + '</span>'; }
+function pwSum(a) { var v = a.filter(function (x) { return x !== '' && x !== undefined && x !== null; }); return v.length === a.length && v.length ? v.reduce(function (x, y) { return x + Number(y); }, 0) : ''; }
+function pwLevel(t, n) { if (t === '') return ''; return n === 3 ? (t >= 7 ? 'ดี' : t >= 4 ? 'พอใช้' : 'ควรปรับปรุง') : (t >= 10 ? 'ดี' : t >= 7 ? 'พอใช้' : 'ควรปรับปรุง'); }
+function pwSheet(title, sub, body, ns) { return '<div class="sheet' + (ns ? ' ns' : '') + '"><div class="muted" style="text-align:center;font-size:11.5px;white-space:nowrap;overflow:hidden;padding-top:4px;border-bottom:1px solid #000;margin-bottom:6px">' + PW_SCHOOL + '</div>' + (title ? '<div class="ttl">' + title + '</div>' : '') + (sub ? '<div class="sub">' + sub + '</div>' : '') + body + '</div>'; }
+function pwWho(p) { var R = S.roles.filter(function (r) { return r.id === p.role; })[0]; return '<div class="who">ชื่อ-สกุล <b>' + esc(p.name) + '</b> &nbsp; เลขที่ <b>' + p.no + '</b> &nbsp; ชั้น ม.5 &nbsp; กลุ่มบ้านที่ <b>' + (p.group || '–') + '</b> &nbsp; บทบาท <b>' + (R ? R.ic + ' ' + esc(R.name) : '–') + '</b></div>'; }
+function pwSign(who) { return '<div class="sig">ลงชื่อ....................................................' + (who || 'ผู้ประเมิน') + '<br>(นางสาวทัศนีย์ ศรีทน)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>'; }
+function pwTick(on) { return on ? '✓' : ''; }
+function pwBox(on) { return on ? '☑' : '☐'; }
+
+// ===== ใบงานนักเรียนรายบุคคล =====
+var PW_TYPES = [['goal', 'ใบงานที่ 1 บัตรตั้งเป้าหมายและความรู้เดิม'], ['pre', 'ใบงานที่ 2 แบบทดสอบก่อนเรียน'], ['parsons', 'ใบงานที่ 3 เรียงบล็อกคำสั่ง (Parsons Problem)'], ['handoff', 'ใบงานที่ 4 บัตรส่งต่องานและกฎทอง'],
+  ['peer', 'ใบงานที่ 5 แบบประเมินเพื่อน'], ['post', 'ใบงานที่ 6 แบบทดสอบหลังเรียน'], ['reflect', 'ใบงานที่ 7 แบบสะท้อนตนเอง'], ['inquiry', 'ใบงานที่ 8 ภารกิจค้นคว้าต่อยอด']];
+function pwTitle(id) { return PW_TYPES.filter(function (t) { return t[0] === id; })[0][1]; }
+function pwTest(p, kind) {
+  var ans = (kind === 'pre' ? p.preAns : p.postAns) || [], key = T.key || [], sc = kind === 'pre' ? p.pre : p.post;
+  if (sc === '') return '';
+  var L = 'กขคง';
+  var body = pwWho(p) + '<div class="note"><u>คำชี้แจง</u> เลือกคำตอบที่ถูกต้องที่สุดเพียงข้อเดียว (10 ข้อ ข้อละ 1 คะแนน) · คำตอบของนักเรียนอยู่ในวงกลม ✓ = ถูก ✗ = ผิด</div>' +
+    '<table><tr><td class="lb" style="width:auto">คะแนนที่ได้</td><td class="c"><b>' + sc + '</b> / 10</td>' + (kind === 'post' ? '<td class="lb" style="width:auto">คะแนนก่อนเรียน</td><td class="c">' + pwV(p.pre) + '</td><td class="lb" style="width:auto">N-gain</td><td class="c">' + (p.gain === null ? '' : pwV(p.gain)) + '</td><td class="lb" style="width:auto">เป้าหมาย</td><td class="c">' + (p.goal ? p.goal.target + (p.post >= p.goal.target ? ' <span class="ok">ถึงเป้า</span>' : ' <span class="no">ยังไม่ถึง</span>') : '') + '</td>' : '<td class="lb" style="width:auto">ผลการประเมิน</td><td class="c">ใช้วินิจฉัยความรู้เดิม' + (p.flag.length ? ' · 🚩 ข้อ ' + p.flag.join(', ') : '') + '</td>') + '</tr></table>' +
+    S.tests.map(function (t, i) {
+      var a = Number(ans[i]) || 0, right = key[i] ? a === Number(key[i]) : null;
+      return '<div class="q">' + (i + 1) + '. ' + esc(t.q) + (a ? ' ' + (right ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') : ' <span class="muted">(ไม่ได้ตอบ)</span>') + '</div>' +
+        '<div class="chs">' + t.c.map(function (c, k) { var txt = L[k] + '. ' + esc(c); return '<span class="ch">' + (a === k + 1 ? '<span class="circ">' + L[k] + '</span>. ' + esc(c) : txt) + '</span>'; }).join('') + '</div>';
+    }).join('') +
+    (kind === 'post' ? '<div class="note" style="margin-top:8px"><b>เกณฑ์การผ่าน</b> ถูกต้องร้อยละ 80 ขึ้นไป (8 คะแนนขึ้นไป) · ผล: ' + (p.post >= 8 ? '<span class="ok">ผ่าน</span>' : '<span class="no">ไม่ผ่าน</span>') + '</div>' : '');
+  return pwSheet(pwTitle(kind), 'เรื่อง การสร้างแบบทดสอบด้วย Array และ Function', body);
 }
-function pwSummary(list) {
-  var pass = list.filter(function (p) { return p.post !== '' && p.post >= 8; }).length, done = list.filter(function (p) { return p.post !== ''; }).length;
-  return '<div class="sheet">' + pwHead('แบบบันทึกคะแนน ผลการทดสอบก่อนเรียน – หลังเรียน (K)') + '<table><tr><th>เลขที่</th><th>ชื่อ - สกุล</th><th>ก่อนเรียน (10)</th><th>หลังเรียน (10)</th><th>N-gain</th><th>เป้าหมาย</th><th>ผลการประเมิน</th></tr>' +
-    list.map(function (p) { return '<tr><td style="text-align:center">' + p.no + '</td><td>' + esc(p.name) + '</td><td style="text-align:center">' + (p.pre === '' ? '' : p.pre) + '</td><td style="text-align:center">' + (p.post === '' ? '' : p.post) + '</td><td style="text-align:center">' + (p.gain === '' || p.gain === null ? '' : p.gain) + '</td><td style="text-align:center">' + (p.goal ? p.goal.target : '') + '</td><td style="text-align:center">' + (p.post === '' ? '' : p.post >= 8 ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>'; }).join('') + '</table>' +
-    '<p><b>นักเรียนที่ผ่านเกณฑ์ต้องทำแบบทดสอบหลังเรียน ถูกต้องร้อยละ 80 ขึ้นไป</b><br>ผลการประเมิน &nbsp; นักเรียนทั้งหมด ' + done + ' คน · ผ่านเกณฑ์ ' + pass + ' คน คิดเป็นร้อยละ ' + (done ? Math.round(pass / done * 10000) / 100 : '–') + ' · ไม่ผ่าน ' + (done - pass) + ' คน · N-gain เฉลี่ยของห้อง ' + (T.pub.gainAvg === null ? '–' : T.pub.gainAvg) + '</p>' +
-    '<div class="sig">ลงชื่อ ........................................ ผู้ประเมิน<br>(นางสาวทัศนีย์ ศรีทน)</div></div>';
+function pwWorksheet(p, id) {
+  var R = S.roles.filter(function (r) { return r.id === p.role; })[0], rf = p.reflect;
+  if (id === 'pre' || id === 'post') return pwTest(p, id);
+  if (id === 'goal') {
+    if (!p.goal && !p.words && !(p.flag && p.flag.length)) return '';
+    var sp = p.support || {};
+    var body = pwWho(p) + '<table><tr><td class="gt" colspan="2">บัตรตั้งเป้าหมาย (ขั้นที่ 1 · หลังทำแบบทดสอบก่อนเรียน)</td></tr>' +
+      '<tr><td class="lb">คะแนนก่อนเรียนของฉัน</td><td>' + (p.pre === '' ? pwA('') : '<span class="a">' + p.pre + ' / 10</span>') + '</td></tr>' +
+      '<tr><td class="lb">คะแนนหลังเรียนที่ฉันตั้งเป้าไว้</td><td>' + (p.goal ? '<span class="a">' + p.goal.target + ' / 10</span>' : pwA('')) + '</td></tr>' +
+      '<tr><td class="lb">เรื่องที่ฉันตั้งใจจะเข้าใจให้ได้วันนี้</td><td>' + S.focus.map(function (f) { return pwBox(p.goal && p.goal.focus === f) + ' ' + esc(f); }).join('<br>') + '</td></tr>' +
+      '<tr><td class="lb">วิธีที่ฉันจะทำให้ถึงเป้าหมาย</td><td>' + pwA(p.goal && p.goal.note) + '</td></tr></table>' +
+      '<table><tr><td class="gt" colspan="2">ความรู้เดิม (ขั้นที่ 1–2)</td></tr>' +
+      '<tr><td class="lb">คำตอบ Word Cloud<br>“เบื้องหลังเกมแบบทดสอบต้องมีอะไรบ้าง”</td><td>' + pwA(p.words) + '</td></tr>' +
+      '<tr><td class="lb">ข้อที่ต้องทบทวน (ติดธงจากแบบทดสอบก่อนเรียน)</td><td>' + (p.flag.length ? '🚩 ข้อ ' + p.flag.join(', ') + ' · การ์ดทบทวน ' + S.cards.filter(function (c) { return c.items.some(function (i) { return p.flag.indexOf(i + 1) >= 0; }); }).map(function (c) { return c.ic + ' ' + esc(c.title); }).join(', ') : 'ไม่ติดธง') + '</td></tr>' +
+      (p.flag.length ? '<tr><td class="lb">ผลคำถามเช็กความเข้าใจหลังทบทวน</td><td>' + (sp.done ? '<span class="a">ถูก ' + sp.score + ' / ' + sp.total + ' ข้อ</span>' : pwA('')) + (sp.given ? ' · ได้รับการ์ดทบทวนจากครูแล้ว' : '') + '</td></tr>' : '') + '</table>';
+    return pwSheet(pwTitle('goal'), '', body);
+  }
+  if (id === 'parsons') {
+    if (!p.parsons) return '';
+    var K = (T.pkey || {})[p.role] || { blocks: [], decoy: '' }, ok = p.parsons.passed;
+    var body = pwWho(p) + '<div class="note"><u>คำชี้แจง</u> ลากบล็อกคำสั่งของบทบาทตนเองเรียงให้ถูกลำดับ และตัดบล็อกหลอกออก 1 บล็อก แล้วตอบโจทย์ท้าทาย</div>' +
+      '<table><tr><td class="gt" colspan="2">' + (R ? R.ic + ' ' + esc(R.name) : '') + ' · Parsons Problem</td></tr><tr><th style="width:12%">ลำดับ</th><th>บล็อกคำสั่ง' + (ok ? ' (ลำดับที่นักเรียนเรียงผ่านการตรวจของระบบ)' : '') + '</th></tr>' +
+      (ok ? K.blocks.map(function (b, i) { return '<tr><td class="c">' + (i + 1) + '</td><td style="font-family:Consolas,monospace;font-size:13px;white-space:pre-wrap" class="a">' + esc(String(b).trim()) + '</td></tr>'; }).join('') + '<tr><td class="c">✘</td><td style="font-family:Consolas,monospace;font-size:13px">บล็อกหลอกที่ตัดออก: <span class="a">' + esc(K.decoy) + '</span></td></tr>'
+        : '<tr><td colspan="2" class="c no">ยังเรียงไม่ผ่าน</td></tr>') + '</table>' +
+      '<table><tr><td class="lb" style="width:18%">จำนวนครั้งที่ลอง</td><td class="c" style="width:12%">' + p.parsons.attempts + '</td><td class="lb" style="width:20%">ถูกต้องในครั้งแรก</td><td class="c" style="width:12%">' + p.parsons.first + '%</td><td class="lb" style="width:10%">ผล</td><td class="c">' + (ok ? '<span class="ok">เรียงถูกต้อง</span>' : '<span class="no">ยังไม่ผ่าน</span>') + '</td></tr></table>' +
+      '<table><tr><td class="gt" colspan="2">โจทย์ท้าทาย</td></tr><tr><td class="lb">' + (R ? esc(R.challenge) : '') + '</td><td>' + pwA(p.parsons.challenge) + '</td></tr></table>' +
+      '<div class="note muted">ใช้เป็นการประเมินระหว่างเรียน (ข้อมูลป้อนกลับ) ไม่นำมาตัดสินผล</div>';
+    return pwSheet(pwTitle('parsons'), '', body);
+  }
+  if (id === 'handoff') {
+    if (!p.handoff) return '';
+    var mk = String(p.handoff.marks || ''), has = mk.length === 5, sc = p.handoff.score;
+    var body = pwWho(p) + '<div class="note"><u>คำชี้แจง</u> กรอกบัตรส่งต่องานของชิ้นส่วนที่ตนรับผิดชอบ 5 ช่อง ก่อนกลับกลุ่มบ้าน (ช่องละ 1 คะแนน ผ่าน 4 ช่องขึ้นไป)</div>' +
+      '<table><tr><td class="gt" colspan="3">บัตรส่งต่องาน · ' + (R ? R.ic + ' ' + esc(R.name) : '') + '</td></tr><tr><th style="width:30%">ช่อง</th><th>คำตอบของนักเรียน</th><th style="width:11%">ครูตรวจ</th></tr>' +
+      S.handoffQ.map(function (q, i) { return '<tr><td class="lb" style="width:30%">' + esc(q) + '</td><td>' + pwA(p.handoff.a[i]) + '</td><td class="c">' + (has ? (mk[i] === '1' ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') : '') + '</td></tr>'; }).join('') +
+      '<tr><td class="lb" style="text-align:center">คะแนนรวม (5)</td><td colspan="2" class="c"><b>' + pwV(sc) + '</b>' + (sc !== '' && sc !== undefined ? ' · ' + (Number(sc) >= 4 ? '<span class="ok">ผ่าน</span>' : '<span class="no">ไม่ผ่าน</span>') : '') + '</td></tr></table>' +
+      '<table><tr><td class="gt" colspan="2">กฎทองของทีมผู้เชี่ยวชาญ (ขั้นที่ 2)</td></tr><tr><td class="lb">กฎทองที่ทีมเสนอ' + (p.rule ? ' (ทีม ' + esc(p.rule.team) + ')' : '') + '</td><td>' + pwA(p.rule && p.rule.text) + '</td></tr>' +
+      '<tr><td class="lb">กฎทองที่ยืนยันร่วมกัน</td><td>' + esc((T.pub.golden || [])[S.roles.map(function (r) { return r.id; }).indexOf(p.role)] || (R ? R.rule : '')) + '</td></tr></table>';
+    return pwSheet(pwTitle('handoff'), '', body);
+  }
+  if (id === 'peer') {
+    var g = p.peerGiven; if (!g) return '';
+    var body = '<table><tr><td class="gt" colspan="4">แบบประเมินเพื่อน (แขกประเมินเกมของกลุ่มคู่ · ขั้นที่ 4)</td></tr>' +
+      '<tr><td colspan="4">กลุ่มที่ประเมิน <b class="a">กลุ่มบ้าน ' + esc(g.to) + '</b> &nbsp; ผู้ประเมิน <b class="a">' + esc(p.name) + '</b> เลขที่ ' + p.no + ' &nbsp; (คู่กลุ่ม 1↔2 · 3↔4 · 5↔6 · 7↔8)</td></tr>' +
+      '<tr><th rowspan="2">รายการประเมิน</th><th colspan="3">คะแนน</th></tr><tr><th style="width:10%">3</th><th style="width:10%">2</th><th style="width:10%">1</th></tr>' +
+      S.peerQ.map(function (q, i) { var v = Number(g.s[i]); return '<tr><td>' + (i + 1) + '. ' + esc(q) + '</td>' + [3, 2, 1].map(function (x) { return '<td class="c a">' + pwTick(v === x) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '<tr><td class="c"><b>รวม (12 คะแนน)</b></td><td colspan="3" class="c a"><b>' + pwSum(g.s) + '</b></td></tr>' +
+      '<tr><td colspan="4">ชอบ ' + pwA(g.like) + '</td></tr><tr><td colspan="4">แนะนำ ' + pwA(g.suggest) + '</td></tr></table>';
+    return pwSheet(pwTitle('peer'), '', pwWho(p) + body);
+  }
+  if (id === 'reflect') {
+    if (!rf) return '';
+    var self = rf.self || [], sl = ['ฉันทำชิ้นส่วนของตนเองสำเร็จ', 'ฉันอธิบายให้เพื่อนเข้าใจได้', 'ฉันช่วยเหลือกลุ่ม'];
+    var body = pwWho(p) + '<table><tr><td class="gt" colspan="2">แบบสะท้อนตนเอง (ขั้นที่ 5)</td></tr>' +
+      '<tr><td class="lb">1) สัปดาห์ก่อนฉันรู้ว่า …</td><td>' + pwA(rf.prior) + '</td></tr><tr><td class="lb">&nbsp;&nbsp;&nbsp;&nbsp;วันนี้ฉันต่อยอดได้ว่า …</td><td>' + pwA(rf.now) + '</td></tr>' +
+      '<tr><td class="lb">2) กฎทองข้อที่ฉันจะไม่ลืมคือ …</td><td>' + pwA(rf.rule) + '</td></tr><tr><td class="lb">&nbsp;&nbsp;&nbsp;&nbsp;เพราะ …</td><td>' + pwA(rf.why) + '</td></tr></table>' +
+      '<table><tr><th rowspan="2">3) ประเมินตนเองเรื่องบทบาท</th><th colspan="3">ระดับ</th></tr><tr><th style="width:10%">3</th><th style="width:10%">2</th><th style="width:10%">1</th></tr>' +
+      sl.map(function (t, i) { return '<tr><td>' + t + '</td>' + [3, 2, 1].map(function (x) { return '<td class="c a">' + pwTick(Number(self[i]) === x) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>' +
+      '<table><tr><th>4) ความมั่นใจในการสร้างเกมแบบทดสอบด้วยตนเอง</th>' + [1, 2, 3, 4, 5].map(function (x) { return '<th style="width:8%">' + x + '</th>'; }).join('') + '</tr><tr><td class="muted">1 = น้อย … 5 = มาก</td>' + [1, 2, 3, 4, 5].map(function (x) { return '<td class="c a">' + pwTick(Number(rf.conf) === x) + '</td>'; }).join('') + '</tr></table>' +
+      '<table><tr><td class="gt" colspan="2">5) ติดตามเป้าหมายของตนเอง</td></tr><tr><td class="lb">เป้าหมายของฉันคือ</td><td class="a">' + (p.goal ? p.goal.target + ' / 10 · ' + esc(p.goal.focus) : '–') + '</td></tr>' +
+      '<tr><td class="lb">ได้จริง</td><td class="a">' + (p.post === '' ? '–' : p.post + ' / 10') + ' &nbsp; ' + pwBox(rf.goalMet === 'ถึงเป้า') + ' ถึงเป้า &nbsp; ' + pwBox(rf.goalMet === 'ยังไม่ถึง') + ' ยังไม่ถึง</td></tr>' +
+      '<tr><td class="lb">เพราะ …</td><td>' + pwA(rf.goalWhy) + '</td></tr><tr><td class="lb">ครั้งหน้าฉันจะ …</td><td>' + pwA(rf.goalNext) + '</td></tr>' +
+      '<tr><td class="lb">6) เรื่องที่ฉันอยากค้นคว้าต่อคือ …</td><td>' + pwA(rf.inqTopic) + '</td></tr></table>';
+    return pwSheet(pwTitle('reflect'), '', body);
+  }
+  if (id === 'inquiry') {
+    if (!p.inquiry) return '';
+    var q = p.inquiry, known = S.inquiry.some(function (t) { return t === q.topic; });
+    var body = pwWho(p) + '<div class="note"><u>คำชี้แจง</u> เลือกหัวข้อที่อยากต่อยอดเกมของกลุ่ม ค้นคว้าจากคู่มือ Construct 2 (Scirra Manual) หรือแหล่งอื่น แล้วสรุปวิธีทำ 3 บรรทัด พร้อมแหล่งที่มา</div>' +
+      '<table><tr><td class="gt" colspan="2">ภารกิจค้นคว้าต่อยอด (หลังเรียน)</td></tr><tr><td class="lb">หัวข้อที่เลือก</td><td>' + S.inquiry.map(function (t) { return pwBox(t === q.topic || (!known && /อื่น/.test(t))) + ' ' + esc(t); }).join('<br>') + (known ? '' : '<br><span class="a">' + esc(q.topic) + '</span>') + '</td></tr>' +
+      '<tr><td class="lb">สรุปวิธีทำ (3 บรรทัด)</td><td style="white-space:pre-wrap">' + pwA(q.summary) + '</td></tr><tr><td class="lb">แหล่งที่มา</td><td>' + pwA(q.source) + '</td></tr></table>';
+    return pwSheet(pwTitle('inquiry'), '', body);
+  }
+  return '';
 }
-function printWork() {
-  var who = $('#pwWho') ? $('#pwWho').value : '';
-  var list = T.people.filter(function (p) { return who ? String(p.no) === who : (p.pre !== '' || p.post !== '' || p.words || p.handoff || p.reflect); });
-  if (!list.length) return toast('ยังไม่มีงานนักเรียนให้พิมพ์');
+function pwGroupSheet(G) {
+  var mem = T.people.filter(function (p) { return Number(p.group) === G.group; });
+  if (!mem.length && !G.extend && !(G.bugs || []).length) return '';
+  var body = '<table><tr><td class="gt" colspan="4">ใบงานกลุ่ม · กลุ่มบ้านที่ ' + G.group + '</td></tr><tr><th style="width:10%">เลขที่</th><th>ชื่อ - สกุล</th><th style="width:28%">บทบาท (ชิ้นส่วนที่รับผิดชอบ)</th><th style="width:14%">ชิ้นส่วน (5)</th></tr>' +
+    mem.map(function (p) { return '<tr><td class="c">' + p.no + '</td><td>' + esc(p.name) + '</td><td>' + esc(roleName(p.role)) + '</td><td class="c">' + pwV(p.piece) + '</td></tr>'; }).join('') + '</table>' +
+    '<table><tr><td class="gt" colspan="2">เช็กลิสต์ทดสอบเกม (ขั้นที่ 3)</td></tr>' + S.buildChecks.map(function (c, i) { return '<tr><td class="c" style="width:8%;font-size:18px">' + pwBox(G.build.checks[i]) + '</td><td>' + (i + 1) + '. ' + esc(c) + '</td></tr>'; }).join('') + '</table>' +
+    '<table><tr><td class="gt" colspan="4">บันทึกบั๊ก (Debug log)</td></tr><tr><th style="width:6%">ที่</th><th>เจอบั๊กอะไร</th><th>แก้อย่างไร</th><th style="width:24%">กฎทองที่เกี่ยวข้อง</th></tr>' +
+    ((G.bugs || []).length ? G.bugs.map(function (b, i) { return '<tr><td class="c">' + (i + 1) + '</td><td class="a">' + esc(b.symptom) + '</td><td class="a">' + esc(b.fix) + '</td><td class="a">' + esc(b.rule) + '</td></tr>'; }).join('') : '<tr><td colspan="4" class="c muted">– ไม่มีบันทึก –</td></tr>') + '</table>' +
+    '<table><tr><td class="gt" colspan="2">ภารกิจต่อยอด (ขั้นที่ 3.4)</td></tr><tr><td class="lb">ภารกิจที่เลือก</td><td>' + S.extend.map(function (e) { return pwBox(G.extend && G.extend.choice === e.id) + ' ' + e.id + '. ' + esc(e.title); }).join('<br>') + '</td></tr>' +
+    '<tr><td class="lb">วิธีทำ</td><td>' + (G.extend ? pwBox(G.extend.mode === 'code') + ' แก้โค้ดจริง &nbsp; ' + pwBox(G.extend.mode !== 'code') + ' เขียนแผน' : '') + '</td></tr><tr><td class="lb">คำตอบ / แผนของกลุ่ม</td><td style="white-space:pre-wrap">' + pwA(G.extend && G.extend.text) + '</td></tr></table>' +
+    '<table><tr><td class="gt" colspan="3">ผลการประเมินจากเพื่อน (แขก)</td></tr><tr><th style="width:14%">แขกคนที่</th><th>ชอบ</th><th>แนะนำ</th></tr>' +
+    (G.peerComments.length ? G.peerComments.map(function (c, i) { return '<tr><td class="c">' + (i + 1) + ' (' + pwV(G.peerScores[i]) + '/12)</td><td class="a">' + esc(c.like) + '</td><td class="a">' + esc(c.suggest) + '</td></tr>'; }).join('') : '<tr><td colspan="3" class="c muted">– ยังไม่มี –</td></tr>') + '</table>';
+  return pwSheet('ใบงานกลุ่ม: ประกอบและทดสอบเกมแบบทดสอบ', '', body);
+}
+
+// ===== แบบบันทึกผลการประเมินของครู (ภาคผนวก ก) =====
+function pwResult(total, pass, unit) {
+  unit = unit || 'คน'; var pc = function (n) { return total ? (Math.round(n / total * 10000) / 100).toFixed(2) : '–'; };
+  return '<div class="res"><b><u>ผลการประเมิน</u></b>&nbsp;&nbsp; <span>นักเรียนทั้งหมด</span> จำนวน <b class="a">' + total + '</b> ' + (unit === 'กลุ่ม' ? 'กลุ่ม' : 'คน') + '<br>' +
+    '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>ผ่านเกณฑ์</span> จำนวน <b class="a">' + pass + '</b> ' + unit + ' &nbsp; คิดเป็นร้อยละ <b class="a">' + pc(pass) + '</b><br>' +
+    '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>ไม่ผ่านเกณฑ์</span> จำนวน <b class="a">' + (total - pass) + '</b> ' + unit + ' &nbsp; คิดเป็นร้อยละ <b class="a">' + pc(total - pass) + '</b></div>' + pwSign();
+}
+function pwLevels(n, extra) {
+  var L = n === 3 ? [['7 – 9', 'ดี (3)'], ['4 – 6', 'พอใช้ (2)'], ['1 – 3', 'ควรปรับปรุง (1)']] : [['10 – 12', 'ดี (3)'], ['7 – 9', 'พอใช้ (2)'], ['4 – 6', 'ควรปรับปรุง (1)']];
+  return '<div style="margin-top:8px"><b>เกณฑ์การตัดสินคุณภาพ</b> มีระดับคุณภาพ ดังนี้</div>' + L.map(function (l) { return '<div style="padding-left:48px">คะแนน ' + l[0] + ' &nbsp;&nbsp;&nbsp;&nbsp; ระดับคุณภาพ ' + l[1] + '</div>'; }).join('') +
+    '<div style="margin-top:4px"><b>เกณฑ์การผ่านการประเมิน</b></div><div style="padding-left:48px">' + (extra || 'ระดับคุณภาพ ดี ขึ้นไป ผ่านเกณฑ์') + '</div>';
+}
+function pwCriteria(r) {
+  return '<table style="table-layout:fixed"><tr><td class="gt" colspan="4">เกณฑ์การให้คะแนน<br>' + r.name + '</td></tr><tr><th rowspan="2" style="width:24%">' + r.col + '</th><th colspan="3">ระดับคุณภาพ</th></tr><tr><th style="width:26%">ดี (3)</th><th style="width:25%">พอใช้ (2)</th><th style="width:25%">ควรปรับปรุง (1)</th></tr>' +
+    r.items.map(function (it) { return '<tr>' + it.map(function (t) { return '<td style="vertical-align:top">' + esc(t) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+}
+function pwRecord(r, vals, sub) {
+  var n = r.short.length, done = 0, pass = 0;
+  var rows = T.people.map(function (p) {
+    var v = vals(p), t = pwSum(v), lv = pwLevel(t, n);
+    if (t !== '') { done++; if (lv === 'ดี') pass++; }
+    return '<tr><td class="c">' + p.no + '</td><td style="white-space:nowrap">' + esc(p.name) + '</td>' + v.map(function (x) { return [3, 2, 1].map(function (k) { return '<td class="c a">' + pwTick(Number(x) === k && x !== '' && x !== undefined && x !== null) + '</td>'; }).join(''); }).join('') +
+      '<td class="c a">' + t + '</td><td class="c a">' + lv + '</td><td class="c a">' + (t === '' ? '' : lv === 'ดี' ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>';
+  }).join('');
+  var body = '<div class="note"><u>คำชี้แจง</u> ให้ทำเครื่องหมาย ✓ ในช่องรายการสังเกตพฤติกรรมที่ผู้เรียนปฏิบัติ' + (sub ? ' · ' + sub : '') + '</div>' +
+    '<table><tr><td class="gt" colspan="' + (3 * n + 5) + '">' + r.name + '</td></tr><tr><th rowspan="3" style="width:6%">เลขที่</th><th rowspan="3">ชื่อ - สกุล</th><th colspan="' + 3 * n + '">รายการประเมิน</th><th rowspan="3" style="width:7%">คะแนนรวม</th><th rowspan="3" style="width:8%">ระดับคุณภาพ</th><th rowspan="3" style="width:8%">ผลการประเมิน</th></tr>' +
+    '<tr>' + r.short.map(function (s) { return '<th colspan="3" style="font-size:12px">' + esc(s) + '</th>'; }).join('') + '</tr><tr>' + r.short.map(function () { return '<th>3</th><th>2</th><th>1</th>'; }).join('') + '</tr>' + rows + '</table>';
+  return pwSheet('', '', body + pwResult(done, pass)) + pwSheet('', '', pwCriteria(r) + pwLevels(n), true);
+}
+var PW_FORMS = [['k', 'แบบบันทึกคะแนนทดสอบก่อน–หลังเรียน (K)'], ['ho', 'แบบบันทึกผลการตรวจบัตรส่งต่องาน (K)'], ['pc', 'แบบตรวจสอบรายการชิ้นส่วนรายบุคคล (P)'], ['r1', 'แบบประเมินพฤติกรรมการปฏิบัติรายบุคคล (P)'],
+  ['r2', 'แบบประเมินชิ้นงานกลุ่ม 8 กลุ่ม (P)'], ['peer', 'แบบบันทึกคะแนนประเมินเพื่อน (P)'], ['r3', 'แบบประเมินคุณลักษณะอันพึงประสงค์ (A)'], ['r5', 'แบบประเมินใฝ่เรียนรู้และการกำกับตนเอง (A)'], ['c', 'แบบประเมินสมรรถนะสำคัญ (C)'], ['r4', 'แบบประเมินภารกิจต่อยอด (ระหว่างเรียน)']];
+function pwForm(id) {
+  var RB = S.rubrics, P = T.people, grp = T.groups.filter(function (g) { return g.members.length; });
+  if (id === 'k') {
+    var done = P.filter(function (p) { return p.post !== ''; }), pass = done.filter(function (p) { return p.post >= 8; }).length;
+    return pwSheet('', '', '<table><tr><td class="gt" colspan="6">แบบบันทึกคะแนน<br>ผลการทดสอบก่อนเรียน – หลังเรียน (K)</td></tr><tr><th style="width:8%">เลขที่</th><th>ชื่อ - สกุล</th><th style="width:14%">ก่อนเรียน<br>(10 คะแนน)</th><th style="width:14%">หลังเรียน<br>(10 คะแนน)</th><th style="width:11%">N-gain</th><th style="width:14%">ผลการประเมิน</th></tr>' +
+      P.map(function (p) { return '<tr><td class="c">' + p.no + '</td><td>' + esc(p.name) + '</td><td class="c a">' + pwV(p.pre) + '</td><td class="c a">' + pwV(p.post) + '</td><td class="c a">' + (p.gain === null ? '' : pwV(p.gain)) + '</td><td class="c a">' + (p.post === '' ? '' : p.post >= 8 ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>'; }).join('') + '</table>' +
+      '<div><b>นักเรียนที่ผ่านเกณฑ์ต้องทำแบบทดสอบหลังเรียน ถูกต้องร้อยละ 80 ขึ้นไป (8 คะแนนขึ้นไป)</b> · N-gain = (หลังเรียน − ก่อนเรียน) ÷ (10 − ก่อนเรียน) · N-gain เฉลี่ยของห้อง <b class="a">' + (T.pub.gainAvg === null || T.pub.gainAvg === undefined ? '–' : T.pub.gainAvg) + '</b></div>' + pwResult(done.length, pass));
+  }
+  if (id === 'ho' || id === 'pc') {
+    var isH = id === 'ho', done = 0, pass = 0;
+    var rows = P.map(function (p) {
+      var mk = isH ? (p.handoff ? String(p.handoff.marks || '') : '') : String(p.pieceMarks || ''), t = isH ? (p.handoff ? p.handoff.score : '') : p.piece;
+      t = t === undefined || t === null ? '' : t; if (t !== '') { done++; if (Number(t) >= 4) pass++; }
+      return '<tr><td class="c">' + p.no + '</td><td style="white-space:nowrap">' + esc(p.name) + '</td><td class="c">' + (roleName(p.role).split(' ')[0] || '') + '</td>' + [0, 1, 2, 3, 4].map(function (i) { return '<td class="c a">' + (mk.length === 5 ? (mk[i] === '1' ? '✓' : '✗') : '') + '</td>'; }).join('') + '<td class="c a">' + t + '</td><td class="c a">' + (t === '' ? '' : Number(t) >= 4 ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>';
+    }).join('');
+    var lab = isH ? 'ช่อง' : 'ข้อ';
+    var tbl = '<table><tr><td class="gt" colspan="10">' + (isH ? 'แบบบันทึกผลการตรวจบัตรส่งต่องาน (K)' : 'แบบตรวจสอบรายการชิ้นส่วนรายบุคคล (P)') + '</td></tr><tr><th style="width:7%">เลขที่</th><th>ชื่อ - สกุล</th><th style="width:8%">บทบาท</th>' + [1, 2, 3, 4, 5].map(function (i) { return '<th style="width:7%">' + lab + ' ' + i + '</th>'; }).join('') + '<th style="width:8%">รวม (5)</th><th style="width:9%">ผล</th></tr>' + rows + '</table>';
+    var crit = isH ? '<div><b>เกณฑ์การให้คะแนน</b> ช่องละ 1 คะแนน ให้คะแนนเมื่อคำตอบมีสาระสำคัญตรงกับแนวคำตอบของบทบาทนั้น (ภาคผนวก ค) · <b>เกณฑ์การผ่าน</b> 4 คะแนนขึ้นไป</div>'
+      : '<table><tr><td class="gt" colspan="2">เกณฑ์การตรวจ<br>แบบตรวจสอบรายการชิ้นส่วนรายบุคคล (P) · ผ่าน 4 รายการขึ้นไป</td></tr><tr><th style="width:22%">บทบาท</th><th>รายการตรวจสอบ (ข้อละ 1 คะแนน)</th></tr>' +
+        S.roles.map(function (r) { return '<tr><td>' + r.ic + ' ' + esc(r.name) + '</td><td>' + (S.piece[r.id] || []).map(function (t, i) { return (i + 1) + ') ' + esc(t); }).join('<br>') + '</td></tr>'; }).join('') + '</table>';
+    return pwSheet('', '', tbl + (isH ? crit + pwResult(done, pass) : '')) + (isH ? '' : pwSheet('', '', crit + pwResult(done, pass), true));
+  }
+  if (id === 'r1') return pwRecord(RB.r1, function (p) { return p.r1; });
+  if (id === 'r3') return pwRecord(RB.r3, function (p) { return p.r3; });
+  if (id === 'r5') return pwRecord(RB.r5, function (p) { return p.r5; }, 'ข้อมูลจากเป้าหมาย แบบสะท้อนตนเอง และภารกิจค้นคว้าในเว็บแอป');
+  if (id === 'c') return pwRecord(RB.c, function (p) { return p.c; });
+  if (id === 'r2') {
+    var forms = T.groups.map(function (G) {
+      var mem = P.filter(function (p) { return Number(p.group) === G.group; }), t = pwSum(G.rub);
+      var col = function (k) { var s = 0, any = false; G.rub.forEach(function (x) { if (Number(x) === k) { s += k; any = true; } }); return any ? s : ''; };
+      return '<table><tr><td class="gt" colspan="4">' + RB.r2.name + '</td></tr><tr><td colspan="4"><b>กลุ่มบ้านที่ ' + G.group + '</b><br>สมาชิกในกลุ่ม ' +
+        (mem.length ? mem.map(function (p, i) { return (i + 1) + '. <span class="a">' + esc(p.name) + '</span>'; }).join(' &nbsp; ') : '1. ................... 2. ................... 3. ................... 4. ...................') + '</td></tr>' +
+        '<tr><th rowspan="2">' + RB.r2.col + '</th><th colspan="3">คะแนน</th></tr><tr><th style="width:12%">3</th><th style="width:12%">2</th><th style="width:12%">1</th></tr>' +
+        RB.r2.items.map(function (it, i) { return '<tr><td>' + esc(it[0]) + '</td>' + [3, 2, 1].map(function (k) { return '<td class="c a">' + pwTick(Number(G.rub[i]) === k) + '</td>'; }).join('') + '</tr>'; }).join('') +
+        '<tr><td class="c"><b>รวม</b></td>' + [3, 2, 1].map(function (k) { return '<td class="c a">' + col(k) + '</td>'; }).join('') + '</tr><tr><td class="c"><b>รวมทั้งหมด</b></td><td colspan="3" class="c a">' + t + '</td></tr><tr><td class="c"><b>ระดับคุณภาพ</b></td><td colspan="3" class="c a">' + pwLevel(t, 4) + '</td></tr></table>';
+    });
+    var out = '';
+    for (var i = 0; i < forms.length; i += 2) out += pwSheet('', '', forms[i] + '<div style="height:14px"></div>' + (forms[i + 1] || ''));
+    var gd = T.groups.filter(function (G) { return pwSum(G.rub) !== ''; });
+    return out + pwSheet('', '', pwCriteria(RB.r2) + pwLevels(4) + pwResult(gd.length, gd.filter(function (G) { return pwSum(G.rub) >= 10; }).length, 'กลุ่ม'), true);
+  }
+  if (id === 'peer') {
+    var gd = T.groups.filter(function (G) { return G.peerAvg !== ''; });
+    return pwSheet('', '', '<table><tr><td class="gt" colspan="6">แบบบันทึกคะแนนประเมินเพื่อน (รายกลุ่ม)</td></tr><tr><th>กลุ่มบ้าน</th><th>แขกคนที่ 1</th><th>แขกคนที่ 2</th><th>แขกคนที่ 3</th><th>ค่าเฉลี่ย (12)</th><th>ผล</th></tr>' +
+      T.groups.map(function (G) { var s = G.peerScores || []; return '<tr><td class="c">กลุ่มบ้าน ' + G.group + '</td>' + [0, 1, 2].map(function (i) { return '<td class="c a">' + pwV(s[i]) + '</td>'; }).join('') + '<td class="c a">' + pwV(G.peerAvg) + '</td><td class="c a">' + (G.peerAvg === '' ? '' : G.peerAvg >= 10 ? 'ผ่าน' : 'ไม่ผ่าน') + '</td></tr>'; }).join('') + '</table>' +
+      '<div><b>เกณฑ์การผ่าน</b> ค่าเฉลี่ยคะแนนจากแขก 10 คะแนนขึ้นไป (จาก 12) · คะแนนเป็นของกลุ่ม บันทึกให้สมาชิกทุกคน</div>' + pwResult(gd.length, gd.filter(function (G) { return G.peerAvg >= 10; }).length, 'กลุ่ม'));
+  }
+  if (id === 'r4') {
+    return pwSheet('', '', '<table><tr><td class="gt" colspan="8">' + RB.r4.name + '</td></tr><tr><th>กลุ่มบ้าน</th><th>ภารกิจ<br>(ก/ข/ค)</th><th>ทำจริง / แผน</th><th>ข้อ 1</th><th>ข้อ 2</th><th>ข้อ 3</th><th>ข้อ 4</th><th>รวม (12)</th></tr>' +
+      T.groups.map(function (G) { var x = G.x || []; return '<tr><td class="c">กลุ่มบ้าน ' + G.group + '</td><td class="c a">' + (G.extend ? esc(G.extend.choice) : '') + '</td><td class="c a">' + (G.extend ? (G.extend.mode === 'code' ? 'ทำจริง' : 'แผน') : '') + '</td>' + [0, 1, 2, 3].map(function (i) { return '<td class="c a">' + pwV(x[i]) + '</td>'; }).join('') + '<td class="c a">' + pwSum(x) + '</td></tr>'; }).join('') + '</table>' +
+      '<div style="height:10px"></div>' + pwCriteria(RB.r4) + pwLevels(4, 'ใช้ให้ข้อมูลป้อนกลับระหว่างเรียน ไม่นำมาตัดสินผล') + pwSign());
+  }
+  return '';
+}
+function pwOpen(title, html) {
+  if (!html) return toast('ยังไม่มีข้อมูลให้พิมพ์');
   busy = true;
   var old = document.getElementById('pw'); if (old) old.remove();
   var d = document.createElement('div'); d.id = 'pw';
-  d.innerHTML = '<style>' + PW_CSS + '</style><div class="bar"><b>🖨️ หลักฐานงานนักเรียน (' + list.length + ' คน)</b><button onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button><button class="ghost" onclick="document.getElementById(\'pw\').remove();busy=false;">ปิด</button><span style="opacity:.8;font-size:14px">ในหน้าพิมพ์ เลือก “บันทึกเป็น PDF” ได้ · กระดาษ A4</span></div>' +
-    (who ? '' : pwSummary(T.people.filter(function (p) { return p.pre !== '' || p.post !== ''; }))) + list.map(pwStudent).join('');
+  d.innerHTML = '<style>' + PW_CSS + '</style><div class="bar"><b>🖨️ ' + title + '</b><button onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button><button class="ghost" onclick="document.getElementById(\'pw\').remove();busy=false;">ปิด</button><span style="opacity:.85;font-size:14px">กระดาษ A4 · ในหน้าพิมพ์เลือก “บันทึกเป็น PDF” ได้ · ปิดหัว/ท้ายกระดาษ (Headers and footers) เพื่อให้หน้าสะอาด</span></div>' + html;
   document.body.appendChild(d);
+}
+function printStudents() {
+  var who = $('#pwWho').value, types = $$('[data-pwt]').filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.pwt; });
+  if (!types.length) return toast('เลือกใบงานอย่างน้อย 1 ชนิด');
+  var list = T.people.filter(function (p) { return who ? String(p.no) === who : true; }), html = '';
+  // เรียงตามใบงานก่อน แล้วตามเลขที่ จะได้แยกแฟ้มตามใบงานได้ง่าย · ถ้าเลือกคนเดียวจะเรียงตามลำดับใบงาน
+  types.forEach(function (t) { list.forEach(function (p) { html += pwWorksheet(p, t); }); });
+  pwOpen('ใบงานนักเรียน' + (who ? ' เลขที่ ' + who : ' (ทุกคนที่ส่งงาน)'), html);
+}
+function printGroups() { var g = $('#pwGrp').value; pwOpen('ใบงานกลุ่ม', T.groups.filter(function (G) { return !g || String(G.group) === g; }).map(pwGroupSheet).join('')); }
+function printForms() { var f = $$('[data-pwf]').filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.pwf; }); if (!f.length) return toast('เลือกแบบบันทึกอย่างน้อย 1 แบบ'); pwOpen('แบบบันทึกผลการประเมินของครู (ภาคผนวก ก)', f.map(pwForm).join('')); }
+function printCard() {
+  var ck = function (attr, id, label) { return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:16px"><input type="checkbox" style="width:22px;height:22px" ' + attr + '="' + id + '" checked>' + esc(label) + '</label>'; };
+  return '<div class="card"><h2>🖨️ ศูนย์พิมพ์หลักฐาน (A4 · รูปแบบเดียวกับแผน)</h2><p class="mute">ข้อมูลที่นักเรียนทำบน iPad และคะแนนที่ครูบันทึกในแผงนี้ จะถูกเติมลงใบงาน/แบบบันทึกให้อัตโนมัติ · สั่งพิมพ์หรือบันทึกเป็น PDF ได้</p>' +
+    '<details open><summary>📝 ใบงานนักเรียนรายบุคคล (แยกทีละใบงาน)</summary><div class="row" style="margin:8px 0"><select id="pwWho" style="max-width:320px"><option value="">ทุกคน (เฉพาะที่ส่งงาน)</option>' + T.people.map(function (p) { return '<option value="' + p.no + '">' + p.no + '. ' + esc(p.name) + '</option>'; }).join('') + '</select></div><div>' +
+    PW_TYPES.map(function (t) { return ck('data-pwt', t[0], t[1]); }).join('') + '</div><button class="ok" id="pwS" style="margin-top:6px">🖨️ เปิดใบงานนักเรียน</button></details>' +
+    '<details style="margin-top:10px"><summary>👥 ใบงานกลุ่ม (สมาชิก · เช็กลิสต์ · บันทึกบั๊ก · ภารกิจต่อยอด · ความเห็นเพื่อน)</summary><div class="row" style="margin:8px 0"><select id="pwGrp" style="max-width:220px"><option value="">ทุกกลุ่ม</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (g) { return '<option>' + g + '</option>'; }).join('') + '</select><button class="ok" id="pwG">🖨️ เปิดใบงานกลุ่ม</button></div></details>' +
+    '<details style="margin-top:10px"><summary>📊 แบบบันทึกผลการประเมินของครู (ภาคผนวก ก · แยกตาราง พร้อมเกณฑ์และสรุปผล)</summary><div style="margin:8px 0">' + PW_FORMS.map(function (f) { return ck('data-pwf', f[0], f[1]); }).join('') + '</div><button class="ok" id="pwF">🖨️ เปิดแบบบันทึกผลการประเมิน</button></details></div>';
 }
 
 var RESETS = [['แบบทดสอบ + เป้าหมาย + การ์ดทบทวน', ['Tests', 'Goals', 'Support']], ['Word Cloud', ['Cloud', 'CloudTag']], ['Parsons + บัตรส่งต่องาน + กฎทอง', ['Parsons', 'Handoff', 'Rules']], ['ประกอบเกม + บั๊ก + ภารกิจต่อยอด', ['Build', 'Bugs', 'Extend']], ['ประเมินเพื่อน + สะท้อนตนเอง + ภารกิจค้นคว้า', ['Peer', 'Reflect', 'Inquiry']], ['Rubric ทั้งหมด', ['Rubric', 'GroupRubric']], ['กลุ่ม/บทบาทนักเรียน', ['Students']],
@@ -303,9 +484,8 @@ function bind() {
   $$('[data-sos]').forEach(function (b) { b.onclick = function () { act('resolveSos', { group: b.dataset.sos }); }; });
   $$('[data-gr]').forEach(function (s) { s.onchange = function () { act('groupRubric', { group: s.dataset.gr, key: s.dataset.k, value: s.value }); }; });
   $$('[data-rb]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.rb, key: s.dataset.k, value: s.value }); }; });
-  if ($('#pwGo')) $('#pwGo').onclick = printWork;
-  $$('[data-pc]').forEach(function (s) { s.onchange = function () { act('rubric', { no: s.dataset.pc, key: 'piece', value: s.value }); }; });
-  $$('[data-ho]').forEach(function (s) { s.onchange = function () { act('handoffScore', { no: s.dataset.ho, score: s.value }); }; });
+  if ($('#pwS')) { $('#pwS').onclick = printStudents; $('#pwG').onclick = printGroups; $('#pwF').onclick = printForms; }
+  [['data-pk', 'pk', 'pieceMarks'], ['data-hk', 'hk', 'handoffMarks']].forEach(function (z) { $$('[' + z[0] + ']').forEach(function (c) { c.onchange = function () { var no = c.dataset[z[1]]; var m = [0, 1, 2, 3, 4].map(function (i) { var x = $('[' + z[0] + '="' + no + '"][data-i="' + i + '"]'); return x && x.checked ? '1' : '0'; }).join(''); act(z[2], { no: no, marks: m }); }; }); });
   $$('[data-sg]').forEach(function (s) { s.onchange = function () { var p = T.people.filter(function (x) { return x.no == s.dataset.sg; })[0]; act('setStudent', { no: s.dataset.sg, group: s.value, role: p.role }); }; });
   $$('[data-sr]').forEach(function (s) { s.onchange = function () { var p = T.people.filter(function (x) { return x.no == s.dataset.sr; })[0]; act('setStudent', { no: s.dataset.sr, group: p.group, role: s.value }); }; });
   $$('[data-rt]').forEach(function (b) { b.onclick = function () { if (confirm('ให้เลขที่ ' + b.dataset.rt + ' ทำแบบทดสอบ' + (b.dataset.kind === 'pre' ? 'ก่อน' : 'หลัง') + 'เรียนใหม่?')) act('resetTest', { no: b.dataset.rt, kind: b.dataset.kind }); }; });
